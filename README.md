@@ -14,7 +14,8 @@ Monorepo quản lý thi công [h2q.com.vn](https://h2q.com.vn).
 
 | Doc | Nội dung |
 |-----|----------|
-| [`docs/FEATURES_CATALOG.md`](docs/FEATURES_CATALOG.md) | **Catalog chi tiết** mọi tính năng + cách test |
+| [`docs/SETUP_ENV_AND_DATA.md`](docs/SETUP_ENV_AND_DATA.md) | **Biến số, secrets, dữ liệu master, checklist** |
+| [`docs/FEATURES_CATALOG.md`](docs/FEATURES_CATALOG.md) | Catalog tính năng + cách test |
 | [`docs/INSTALL.md`](docs/INSTALL.md) | Lộ trình cài Frappe → Supabase → Vercel |
 | [`docs/H2Q_SETTINGS.md`](docs/H2Q_SETTINGS.md) | Knob Desk Settings |
 | [`docs/AUDIT_STATUS.md`](docs/AUDIT_STATUS.md) | Audit ship |
