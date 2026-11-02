@@ -1,7 +1,7 @@
 """
 Frappe app hooks for h2q_core.
 
-All custom logic lives here — never patch BuildSuite / ERPNext core.
+All custom logic lives here — never patch ERPNext / BuildSuite core.
 """
 
 app_name = "h2q_core"
@@ -12,20 +12,22 @@ app_email = "dev@h2q.com.vn"
 app_license = "MIT"
 
 # ---------------------------------------------------------------------------
-# File storage → Cloudflare R2 (S3 API)
+# File storage → Cloudflare R2 (S3-compatible via boto3)
+# Overrides Frappe File write/delete — see storage/r2_file.py
 # ---------------------------------------------------------------------------
 write_file = "h2q_core.storage.r2_file.write_file"
 delete_file_data_content = "h2q_core.storage.r2_file.delete_file_data_content"
 
 # ---------------------------------------------------------------------------
-# DocType events
+# Measurement Book notifications
 #
-# Measurement Book (BuildSuite) is NOT submittable.
-# Certification = status Draft → Certified (certify_measurement_book → doc.save).
-# Use on_update, not on_submit.
+# BuildSuite today: NOT submittable → certify sets status="Certified" + save().
+# We hook on_update for the real path, and on_submit for forward-compat.
+# Both enqueue Telegram via frappe.enqueue (non-blocking).
 # ---------------------------------------------------------------------------
 doc_events = {
 	"Measurement Book": {
-		"on_update": "h2q_core.notifications.telegram_notifier.on_measurement_book_update",
+		"on_update": "h2q_core.telegram_bot.on_measurement_book_update",
+		"on_submit": "h2q_core.telegram_bot.on_measurement_book_submit",
 	},
 }

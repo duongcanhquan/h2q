@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+const root = path.resolve('src');
+assert.ok(fs.existsSync(path.join(root, 'app/project/[id]/report/page.tsx')));
+assert.ok(fs.existsSync(path.join(root, 'components/report/ReportForm.tsx')));
+assert.ok(fs.existsSync(path.join(root, 'components/report/PhotoCapture.tsx')));
+const form = fs.readFileSync(path.join(root, 'components/report/ReportForm.tsx'), 'utf8');
+assert.match(form, /submitMeasurement/);
+assert.match(form, /image_urls/);
+const client = fs.readFileSync(path.join(root, 'lib/frappe/client.ts'), 'utf8');
+assert.match(client, /upload_file/);
+assert.match(client, /submit_measurement/);
+console.log('STEP4_SMOKE_OK');

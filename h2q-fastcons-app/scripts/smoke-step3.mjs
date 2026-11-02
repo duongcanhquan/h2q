@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+const root = path.resolve('src');
+assert.ok(fs.existsSync(path.join(root, 'components/projects/ProjectGrid.tsx')));
+assert.ok(fs.existsSync(path.join(root, 'lib/offline/wbs-cache.ts')));
+assert.ok(fs.existsSync(path.resolve('public/manifest.webmanifest')));
+assert.ok(fs.existsSync(path.resolve('public/icons/icon-192.png')));
+const cfg = fs.readFileSync(path.resolve('next.config.ts'), 'utf8');
+assert.match(cfg, /next-pwa|withPWA/);
+console.log('STEP3_SMOKE_OK');
