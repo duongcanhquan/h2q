@@ -2,13 +2,17 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, WifiOff } from "lucide-react";
-import { getProjectWbs, submitMeasurement } from "@/lib/frappe/client";
+import { getProjectWbs } from "@/lib/frappe/client";
 import { cacheProjectWbs, readCachedProjectWbs } from "@/lib/offline/wbs-cache";
 import type { TaskRow } from "@/lib/frappe/types";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { Spinner } from "@/components/ui/Spinner";
 import { PhotoCapture, type PhotoItem } from "@/components/report/PhotoCapture";
 import { FrappeApiError } from "@/lib/frappe/errors";
+import {
+  drainLocalMeasurementQueue,
+  enqueueMeasurement,
+} from "@/lib/supabase/measurements";
 
 export function ReportForm({ projectId }: { projectId: string }) {
   const [tasks, setTasks] = useState<TaskRow[]>([]);
@@ -35,6 +39,7 @@ export function ReportForm({ projectId }: { projectId: string }) {
         cacheProjectWbs(projectId, data);
         setProjectName(data.project_name || projectId);
         setTasks((data.tasks || []).filter((t) => !t.is_group));
+        void drainLocalMeasurementQueue();
       } catch (err) {
         const cached = readCachedProjectWbs(projectId);
         if (cached) {
@@ -54,8 +59,14 @@ export function ReportForm({ projectId }: { projectId: string }) {
       }
     }
     void load();
+
+    const onOnline = () => {
+      void drainLocalMeasurementQueue();
+    };
+    window.addEventListener("online", onOnline);
     return () => {
       cancelled = true;
+      window.removeEventListener("online", onOnline);
     };
   }, [projectId]);
 
@@ -90,7 +101,8 @@ export function ReportForm({ projectId }: { projectId: string }) {
     const imageUrls = photos.map((p) => p.remoteUrl).filter(Boolean) as string[];
     setSubmitting(true);
     try {
-      const result = await submitMeasurement({
+      // Offline-first: Supabase measurements_sync (+ IndexedDB fallback) → flush → Frappe
+      const queued = await enqueueMeasurement({
         project: projectId,
         task: taskId,
         quantity: qty,
@@ -98,8 +110,18 @@ export function ReportForm({ projectId }: { projectId: string }) {
         description: selectedTask?.subject,
         remarks,
         boq_item: selectedTask?.boq_items?.[0]?.name,
+        project_name: projectName,
       });
-      setSuccess(`Đã tạo Measurement Book ${result.measurement_book} (Draft)`);
+
+      if (queued.mode === "indexeddb") {
+        setSuccess(
+          "Đã lưu offline trên thiết bị. Sẽ đồng bộ Supabase → Frappe khi có mạng.",
+        );
+      } else {
+        setSuccess(
+          `Đã ghi vào hàng đợi Supabase (${queued.sync_id || queued.client_request_id}). Đang đẩy sang Frappe…`,
+        );
+      }
       setQuantity("");
       setRemarks("");
       setPhotos([]);
