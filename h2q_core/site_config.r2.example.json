@@ -13,5 +13,9 @@
   "r2_read_timeout": 120,
   "r2_max_attempts": 5,
   "r2_offload_all_files": 0,
-  "r2_allowed_extensions": ".jpg,.jpeg,.png,.webp,.gif,.heic,.tif,.tiff,.bmp,.dwg,.dxf,.dgn,.rvt,.ifc,.pdf,.plt,.dwf"
+  "r2_allowed_extensions": ".jpg,.jpeg,.png,.webp,.gif,.heic,.tif,.tiff,.bmp,.dwg,.dxf,.dgn,.rvt,.ifc,.pdf,.plt,.dwf",
+  "telegram_bot_token": "YOUR_BOTFATHER_TOKEN",
+  "telegram_chat_id": "485567058",
+  "supabase_url": "https://YOUR_PROJECT.supabase.co",
+  "supabase_service_role_key": "YOUR_SERVICE_ROLE_KEY"
 }

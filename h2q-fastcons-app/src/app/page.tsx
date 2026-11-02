@@ -1,10 +1,6 @@
-import { AppShell } from "@/components/layout/AppShell";
-import { ProjectGrid } from "@/components/projects/ProjectGrid";
+import { redirect } from "next/navigation";
 
-export default function DashboardPage() {
-  return (
-    <AppShell title="Dự án của tôi">
-      <ProjectGrid />
-    </AppShell>
-  );
+/** Home → Dashboard (Bước 3) */
+export default function HomePage() {
+  redirect("/dashboard");
 }

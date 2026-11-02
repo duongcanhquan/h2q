@@ -7,6 +7,8 @@ export function proxy(request: NextRequest) {
   const isPublic =
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/sync") || // webhook/cron uses x-sync-secret, not sid
+    pathname.startsWith("/api/health") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/icons") ||
     pathname === "/manifest.webmanifest" ||
@@ -19,7 +21,7 @@ export function proxy(request: NextRequest) {
   const sid = request.cookies.get(SID_COOKIE)?.value;
   if (!sid) {
     const login = new URL("/login", request.url);
-    login.searchParams.set("next", pathname);
+    login.searchParams.set("next", pathname === "/" ? "/dashboard" : pathname);
     return NextResponse.redirect(login);
   }
   return NextResponse.next();

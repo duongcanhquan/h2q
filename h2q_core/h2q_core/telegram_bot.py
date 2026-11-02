@@ -34,14 +34,37 @@ TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
 
 def on_measurement_book_update(doc, method: str | None = None) -> None:
-	"""Fire when MB status transitions to Certified (BuildSuite real path)."""
-	if not _is_telegram_enabled():
+	"""
+	Telegram on:
+	  1) custom_h2q_approval_status → Pending Approval (Giai đoạn 2 FastCons)
+	  2) BuildSuite status → Certified (after approve_measurement)
+	Routing / enable flags come from H2Q Settings (Desk).
+	"""
+	from h2q_core.settings import get_settings, is_telegram_feature_on
+
+	if not is_telegram_feature_on():
 		return
+
+	cfg = get_settings()
+	approval = getattr(doc, "custom_h2q_approval_status", None)
+	if approval == "Pending Approval":
+		if not cint(cfg.get("telegram_notify_on_pending", 1)):
+			return
+		changed = True
+		if hasattr(doc, "has_value_changed"):
+			changed = doc.has_value_changed("custom_h2q_approval_status")
+		already = cint(getattr(doc, "custom_h2q_telegram_notified", 0))
+		if changed and not already:
+			_enqueue_notify(doc.name, kind="pending")
+		return
+
 	if getattr(doc, "status", None) != "Certified":
+		return
+	if not cint(cfg.get("telegram_notify_on_certified", 1)):
 		return
 	if hasattr(doc, "has_value_changed") and not doc.has_value_changed("status"):
 		return
-	_enqueue_notify(doc.name)
+	_enqueue_notify(doc.name, kind="certified")
 
 
 def on_measurement_book_submit(doc, method: str | None = None) -> None:
@@ -49,19 +72,30 @@ def on_measurement_book_submit(doc, method: str | None = None) -> None:
 	Safety net if a future BuildSuite release makes Measurement Book submittable.
 	Today this never runs — keep for forward-compat without touching BuildSuite core.
 	"""
-	if not _is_telegram_enabled():
+	from h2q_core.settings import is_telegram_feature_on
+
+	if not is_telegram_feature_on():
 		return
-	_enqueue_notify(doc.name)
+	_enqueue_notify(doc.name, kind="certified")
 
 
-def _enqueue_notify(measurement_book: str) -> None:
+def enqueue_over_limit_alert(measurement_book: str) -> None:
+	from h2q_core.settings import is_telegram_feature_on
+
+	if not is_telegram_feature_on():
+		return
+	_enqueue_notify(measurement_book, kind="alerts")
+
+
+def _enqueue_notify(measurement_book: str, *, kind: str = "certified") -> None:
 	frappe.enqueue(
 		"h2q_core.telegram_bot.send_measurement_notification",
 		queue="short",
 		timeout=60,
 		enqueue_after_commit=True,
-		job_name=f"telegram_mb::{measurement_book}",
+		job_name=f"telegram_mb::{kind}::{measurement_book}",
 		measurement_book=measurement_book,
+		kind=kind,
 	)
 
 
@@ -70,23 +104,95 @@ def _enqueue_notify(measurement_book: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def send_measurement_notification(measurement_book: str) -> None:
+def send_measurement_notification(measurement_book: str, kind: str = "certified") -> None:
 	"""Background job: compose Markdown message and POST to Telegram."""
 	try:
+		from h2q_core.settings import telegram_chat_for
+
 		doc = frappe.get_doc("Measurement Book", measurement_book)
+		approval = getattr(doc, "custom_h2q_approval_status", None)
 		is_certified = getattr(doc, "status", None) == "Certified"
 		is_submitted = cint(doc.docstatus) == 1
+		is_pending = kind == "pending" or approval == "Pending Approval"
+
+		if kind == "alerts":
+			text = build_over_limit_markdown(doc)
+			send_telegram_message(text, chat_id=telegram_chat_for("alerts"))
+			return
+
+		if kind == "pending" or (is_pending and not is_certified):
+			if approval != "Pending Approval":
+				return
+			text = build_pending_markdown(doc)
+			send_telegram_message(text, chat_id=telegram_chat_for("pending"))
+			if hasattr(doc, "meta") and doc.meta.has_field("custom_h2q_telegram_notified"):
+				frappe.db.set_value(
+					"Measurement Book",
+					doc.name,
+					"custom_h2q_telegram_notified",
+					1,
+					update_modified=False,
+				)
+			return
+
 		if not (is_certified or is_submitted):
 			return
 
 		text = build_measurement_markdown(doc)
-		send_telegram_message(text, chat_id=_chat_id())
+		send_telegram_message(text, chat_id=telegram_chat_for("certified"))
 	except Exception:
 		frappe.log_error(
 			title=f"Telegram notify failed · MB {measurement_book}",
 			message=frappe.get_traceback(),
 		)
 		raise
+
+
+def build_pending_markdown(doc) -> str:
+	project_name = _project_name(doc.project)
+	wbs = _format_wbs_items(doc)
+	submitter = _user_full_name(
+		doc.get("custom_h2q_submitted_by_user") or doc.get("measured_by") or doc.owner
+	)
+	qty = flt(doc.get("measured_total"))
+	task = doc.get("custom_h2q_task") or "—"
+	over = "⚠️ *Vượt định mức BOQ (cảnh báo)*\n" if cint(doc.get("custom_h2q_boq_over_limit")) else ""
+	gps = ""
+	if doc.get("custom_h2q_gps_lat") not in (None, "") and doc.get("custom_h2q_gps_lng") not in (
+		None,
+		"",
+	):
+		gps = (
+			f"• GPS: `{flt(doc.custom_h2q_gps_lat):.5f}, {flt(doc.custom_h2q_gps_lng):.5f}`"
+			f" (±{flt(doc.get('custom_h2q_gps_accuracy') or 0):.0f}m)\n"
+		)
+
+	return (
+		"⏳ *Chờ duyệt nghiệm thu (Measurement Book)*\n"
+		f"{over}"
+		f"• Phiếu: `{doc.name}`\n"
+		f"• Dự án: *{_escape_md(project_name)}*\n"
+		f"• Task WBS: `{task}`\n"
+		f"• Hạng mục:\n{wbs}\n"
+		f"• Người gửi: *{_escape_md(submitter)}*\n"
+		f"• Khối lượng: *{qty:g}*\n"
+		f"{gps}"
+		f"• Work Order: `{doc.get('work_order') or '—'}`\n"
+		"→ Duyệt qua API `h2q_core.api.approve_measurement` hoặc Desk Workflow."
+	)
+
+
+def build_over_limit_markdown(doc) -> str:
+	project_name = _project_name(doc.project)
+	qty = flt(doc.get("measured_total"))
+	return (
+		"⚠️ *Cảnh báo vượt định mức BOQ*\n"
+		f"• Phiếu: `{doc.name}`\n"
+		f"• Dự án: *{_escape_md(project_name)}*\n"
+		f"• Khối lượng: *{qty:g}*\n"
+		f"• Task: `{doc.get('custom_h2q_task') or '—'}`\n"
+		"→ Kiểm tra trên Desk / FastCons trước khi duyệt."
+	)
 
 
 def build_measurement_markdown(doc) -> str:
@@ -167,13 +273,24 @@ def send_telegram_message(text: str, chat_id: str | None = None) -> dict[str, An
 
 
 def _chat_id() -> str:
-	return str(frappe.conf.get("telegram_chat_id") or DEFAULT_CHAT_ID)
+	"""Fallback only — prefer telegram_chat_for(kind) from H2Q Settings."""
+	try:
+		from h2q_core.settings import telegram_chat_for
+
+		return telegram_chat_for("pending")
+	except Exception:
+		return str(frappe.conf.get("telegram_chat_id") or DEFAULT_CHAT_ID)
 
 
 def _is_telegram_enabled() -> bool:
-	if "telegram_enabled" not in frappe.conf:
-		return True
-	return bool(cint(frappe.conf.get("telegram_enabled")))
+	try:
+		from h2q_core.settings import is_telegram_feature_on
+
+		return is_telegram_feature_on()
+	except Exception:
+		if "telegram_enabled" not in frappe.conf:
+			return True
+		return bool(cint(frappe.conf.get("telegram_enabled")))
 
 
 def _format_wbs_items(doc) -> str:

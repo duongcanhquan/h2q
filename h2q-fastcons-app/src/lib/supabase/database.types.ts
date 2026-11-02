@@ -6,21 +6,45 @@ export type MeasurementsSyncRow = {
   id: string;
   created_at: string;
   updated_at: string;
-  project_id: string;
-  task_id: string;
-  quantity: number;
-  image_urls: string[];
-  work_order: string | null;
-  boq_item: string | null;
-  description: string | null;
+  work_order: string;
+  project: string;
+  measurement_date: string;
+  measured_by: string | null;
+  company: string | null;
   remarks: string | null;
-  report_date: string | null;
+  status: string;
+  task: string;
+  description: string;
+  work_order_line: string | null;
+  cost_code_type: string | null;
+  cost_code_group: string | null;
+  cost_code_item: string | null;
+  cost_code_label: string | null;
+  uom: string | null;
+  nos: number | null;
+  length: number | null;
+  breadth: number | null;
+  depth: number | null;
+  quantity: number;
+  is_deduction: boolean;
+  rate: number | null;
+  billed_amount: number | null;
+  image_url: string | null;
+  image_urls: string[];
+  is_synced_to_frappe: boolean;
+  boq_item: string | null;
   frappe_user: string | null;
   client_request_id: string | null;
-  status: MeasurementSyncStatus;
+  sync_status: MeasurementSyncStatus;
   frappe_measurement_book: string | null;
   last_error: string | null;
   synced_at: string | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
+  gps_accuracy: number | null;
+  approval_status: string | null;
+  auto_request_approval: boolean;
+  boq_over_limit: boolean;
 };
 
 export type ProjectProgressRow = {
@@ -41,8 +65,10 @@ export type Database = {
       measurements_sync: {
         Row: MeasurementsSyncRow;
         Insert: Partial<MeasurementsSyncRow> & {
-          project_id: string;
-          task_id: string;
+          work_order: string;
+          project: string;
+          task: string;
+          description: string;
           quantity: number;
         };
         Update: Partial<MeasurementsSyncRow>;

@@ -5,12 +5,16 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
+/**
+ * Báo cáo hiện trường — `/project/[project_id]/report`
+ * (param route name is `id` = Frappe Project name)
+ */
 export default async function ProjectReportPage({ params }: Props) {
   const { id } = await params;
   const projectId = decodeURIComponent(id);
 
   return (
-    <AppShell title="Nhật ký hiện trường" backHref="/">
+    <AppShell title="Báo cáo hiện trường" backHref="/dashboard">
       <ReportForm projectId={projectId} />
     </AppShell>
   );

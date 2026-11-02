@@ -3,7 +3,9 @@
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { FrappeApiError, extractFrappeError } from "@/lib/frappe/errors";
 import type {
+  BoqItemDefaults,
   FrappeOk,
+  H2qPublicSettings,
   ProjectRow,
   ProjectWbsData,
   SubmitMeasurementPayload,
@@ -77,11 +79,33 @@ export async function getActiveProjects(): Promise<{ projects: ProjectRow[]; cou
   return unwrapMethod(data);
 }
 
+export async function getH2qSettings(): Promise<H2qPublicSettings> {
+  const { data } = await frappeClient.post("/api/method/h2q_core.api.get_h2q_settings");
+  return unwrapMethod(data);
+}
+
 export async function getProjectWbs(project: string): Promise<ProjectWbsData> {
   const body = new URLSearchParams({ project });
   const { data } = await frappeClient.post("/api/method/h2q_core.api.get_project_wbs", body, {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
+  return unwrapMethod(data);
+}
+
+export async function getBoqItemDefaults(args: {
+  boq_item?: string;
+  project?: string;
+  task?: string;
+}): Promise<BoqItemDefaults | null> {
+  const body = new URLSearchParams();
+  if (args.boq_item) body.set("boq_item", args.boq_item);
+  if (args.project) body.set("project", args.project);
+  if (args.task) body.set("task", args.task);
+  const { data } = await frappeClient.post(
+    "/api/method/h2q_core.api.get_boq_item_defaults",
+    body,
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+  );
   return unwrapMethod(data);
 }
 

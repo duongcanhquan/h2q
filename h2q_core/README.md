@@ -28,10 +28,24 @@ bench --site <site> clear-cache && bench restart
 }
 ```
 
+## H2Q Settings (Desk)
+
+Single DocType **H2Q Settings** — admin bật/tắt tính năng, policy vượt BOQ, GPS/ảnh, Telegram chat routing, approval roles, HR default roles.  
+Chi tiết: [`docs/H2Q_SETTINGS.md`](../docs/H2Q_SETTINGS.md).
+
+```bash
+bench --site <site> migrate
+bench --site <site> execute h2q_core.setup_phase2.run
+```
+
 ## Whitelisted APIs
 
 | Method | Path |
 |--------|------|
+| Public settings | `h2q_core.api.get_h2q_settings` |
 | Active projects | `h2q_core.api.get_active_projects` |
 | WBS + BOQ | `h2q_core.api.get_project_wbs` |
+| BOQ item defaults | `h2q_core.api.get_boq_item_defaults` |
 | Create Draft MB | `h2q_core.api.submit_measurement` |
+| Request / approve / reject | `h2q_core.api.request_measurement_approval` / `approve_measurement` / `reject_measurement` |
+| Pending queue | `h2q_core.api.get_pending_approvals` |

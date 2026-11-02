@@ -23,8 +23,10 @@ export async function POST(request: NextRequest) {
     type?: string;
   };
 
-  const record = payload.record;
-  if (!record || record.status !== "pending") {
+  const record = payload.record as
+    | { client_request_id?: string; id?: string; status?: string; sync_status?: string }
+    | undefined;
+  if (!record || (record.sync_status || record.status) !== "pending") {
     return NextResponse.json({ message: "ignored", reason: "not pending insert" });
   }
 

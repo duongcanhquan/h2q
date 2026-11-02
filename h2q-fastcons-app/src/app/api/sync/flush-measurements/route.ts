@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
     let query = admin
       .from("measurements_sync")
       .select("*")
-      .in("status", ["pending", "failed"])
+      .in("sync_status", ["pending", "failed"])
+      .eq("is_synced_to_frappe", false)
       .order("created_at", { ascending: true })
       .limit(Math.min(body.limit || 20, 50));
 
@@ -80,26 +81,51 @@ async function syncOneRow(row: MeasurementsSyncRow) {
   const admin = getSupabaseAdmin();
   await admin
     .from("measurements_sync")
-    .update({ status: "syncing", last_error: null })
+    .update({ sync_status: "syncing", last_error: null })
     .eq("id", row.id);
 
   try {
+    const imageUrls = Array.isArray(row.image_urls) ? row.image_urls : [];
+    if (row.image_url && !imageUrls.includes(row.image_url)) {
+      imageUrls.unshift(row.image_url);
+    }
+
     const mb = await callFrappeSubmitMeasurement({
-      project: row.project_id,
-      task: row.task_id,
+      project: row.project,
+      task: row.task,
       quantity: Number(row.quantity),
-      image_urls: Array.isArray(row.image_urls) ? row.image_urls : [],
-      work_order: row.work_order || undefined,
+      image_url: row.image_url || imageUrls[0],
+      image_urls: imageUrls,
+      work_order: row.work_order !== "PENDING_RESOLVE" ? row.work_order : undefined,
+      work_order_line: row.work_order_line || undefined,
       boq_item: row.boq_item || undefined,
-      description: row.description || undefined,
+      description: row.description,
       remarks: row.remarks || undefined,
-      date: row.report_date || undefined,
+      date: row.measurement_date || undefined,
+      uom: row.uom || undefined,
+      nos: row.nos ?? undefined,
+      length: row.length ?? undefined,
+      breadth: row.breadth ?? undefined,
+      depth: row.depth ?? undefined,
+      is_deduction: row.is_deduction,
+      rate: row.rate ?? undefined,
+      billed_amount: row.billed_amount ?? undefined,
+      cost_code_type: row.cost_code_type || undefined,
+      cost_code_group: row.cost_code_group || undefined,
+      cost_code_item: row.cost_code_item || undefined,
+      cost_code_label: row.cost_code_label || undefined,
+      measured_by: row.measured_by || undefined,
+      gps_lat: row.gps_lat ?? undefined,
+      gps_lng: row.gps_lng ?? undefined,
+      gps_accuracy: row.gps_accuracy ?? undefined,
+      auto_request_approval: row.auto_request_approval ? 1 : undefined,
     });
 
     await admin
       .from("measurements_sync")
       .update({
-        status: "synced",
+        sync_status: "synced",
+        is_synced_to_frappe: true,
         frappe_measurement_book: mb,
         synced_at: new Date().toISOString(),
         last_error: null,
@@ -111,7 +137,7 @@ async function syncOneRow(row: MeasurementsSyncRow) {
     const message = error instanceof Error ? error.message : "sync failed";
     await admin
       .from("measurements_sync")
-      .update({ status: "failed", last_error: message })
+      .update({ sync_status: "failed", is_synced_to_frappe: false, last_error: message })
       .eq("id", row.id);
     return { id: row.id, status: "failed", error: message };
   }

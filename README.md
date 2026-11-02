@@ -1,40 +1,27 @@
 # H2Q — Headless Construction ERP
 
-Monorepo cho hệ thống quản lý thi công [h2q.com.vn](https://h2q.com.vn).
+Monorepo quản lý thi công [h2q.com.vn](https://h2q.com.vn).
 
-## Thành phần
+| Thư mục | Vai trò |
+|---------|---------|
+| `h2q_core/` | Frappe app: R2, Telegram, HR seed, H2Q Settings, Measurement APIs, Supabase push |
+| `h2q-fastcons-app/` | Next.js PWA FastCons (Vercel) — dashboard, báo cáo KL, offline Supabase |
+| `docs/` | Mapping Fastwork, Settings, INSTALL |
+| `buildsuite_src/` | Reference BuildSuite (không deploy từ monorepo) |
+| `h2q_erp/` | frappe_docker reference |
 
-| Thư mục | Mô tả |
-|---------|--------|
-| `h2q_core/` | Custom Frappe app (R2 storage, Telegram, REST API cho PWA) |
-| `h2q-fastcons-app/` | Frontend Next.js (PWA) — Vercel |
+## Cài đặt & deploy
 
-## Backend phụ thuộc (clone riêng)
+→ **[`docs/INSTALL.md`](docs/INSTALL.md)** (Frappe → Supabase → Vercel).
 
-```bash
-# Frappe Docker / bench
-git clone https://github.com/frappe/frappe_docker.git h2q_erp
-
-# BuildSuite (construction DocTypes)
-git clone https://github.com/BuildSuite-io/buildsuite_core.git buildsuite_src
-```
-
-## Frontend
+## Dev nhanh (frontend)
 
 ```bash
 cd h2q-fastcons-app
-cp .env.example .env.local   # điền FRAPPE_URL
-npm install
-npm run dev
+cp .env.example .env.local
+npm install && npm run dev
 ```
 
-## Frappe app
+## Remote
 
-Copy / link `h2q_core` vào `apps/` trên bench, rồi:
-
-```bash
-bench --site <site> install-app h2q_core
-bench pip install -r apps/h2q_core/requirements.txt
-```
-
-Remote: https://github.com/duongcanhquan/h2q
+https://github.com/duongcanhquan/h2q

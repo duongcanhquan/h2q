@@ -11,6 +11,7 @@ export type EnqueueInput = SubmitMeasurementPayload & {
   frappe_user?: string;
   client_request_id?: string;
   project_name?: string;
+  uom?: string;
 };
 
 async function openIdb(): Promise<IDBDatabase> {
@@ -82,21 +83,42 @@ export async function enqueueMeasurement(input: EnqueueInput): Promise<{
     return { mode: "indexeddb", client_request_id };
   }
 
+  const imageUrls = input.image_urls || [];
+  const description =
+    input.description || input.task || "Field measurement";
+  if (!input.work_order) {
+    console.warn(
+      "[measurements] work_order missing — BuildSuite MB requires it; flush may auto-resolve",
+    );
+  }
+
   const { data, error } = await supabase
     .from("measurements_sync")
     .insert({
-      project_id: input.project,
-      task_id: input.task,
+      work_order: input.work_order || "PENDING_RESOLVE",
+      project: input.project,
+      measurement_date: input.date || new Date().toISOString().slice(0, 10),
+      task: input.task,
+      description,
       quantity: input.quantity,
-      image_urls: input.image_urls || [],
-      work_order: input.work_order || null,
+      uom: input.uom || null,
+      rate: input.rate ?? null,
+      billed_amount: input.billed_amount ?? null,
+      image_url: imageUrls[0] || null,
+      image_urls: imageUrls,
+      is_synced_to_frappe: false,
       boq_item: input.boq_item || null,
-      description: input.description || null,
       remarks: input.remarks || null,
-      report_date: input.date || null,
       frappe_user: input.frappe_user || null,
       client_request_id,
-      status: "pending",
+      sync_status: "pending",
+      status: "Draft",
+      approval_status: "Draft",
+      gps_lat: input.gps_lat ?? null,
+      gps_lng: input.gps_lng ?? null,
+      gps_accuracy: input.gps_accuracy ?? null,
+      auto_request_approval: Boolean(input.auto_request_approval),
+      boq_over_limit: false,
     })
     .select("id")
     .single();
@@ -148,7 +170,7 @@ export async function listRecentSyncForProject(
   const { data, error } = await supabase
     .from("measurements_sync")
     .select("*")
-    .eq("project_id", projectId)
+    .eq("project", projectId)
     .order("created_at", { ascending: false })
     .limit(20);
   if (error) return [];

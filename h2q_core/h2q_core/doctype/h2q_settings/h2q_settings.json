@@ -1,0 +1,292 @@
+{
+ "actions": [],
+ "creation": "2026-11-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "features_section",
+  "enable_measurement_book",
+  "enable_site_diary",
+  "enable_client_ra_billing",
+  "enable_offline_sync",
+  "column_break_feat",
+  "dashboard_progress_source",
+  "ui_profile",
+  "allow_mobile_revise_rejected",
+  "field_policy_section",
+  "boq_over_limit_policy",
+  "auto_request_approval_default",
+  "column_break_policy",
+  "gps_required",
+  "geofence_enforcement",
+  "min_photos_on_submit",
+  "min_photos_on_approve",
+  "approval_section",
+  "approval_roles",
+  "resync_workflow_on_save",
+  "notify_section",
+  "telegram_enabled",
+  "telegram_chat_id_pending",
+  "telegram_chat_id_certified",
+  "column_break_tg",
+  "telegram_chat_id_alerts",
+  "telegram_notify_on_pending",
+  "telegram_notify_on_certified",
+  "telegram_notify_on_over_limit",
+  "hr_section",
+  "default_employee_roles",
+  "workforce_mode",
+  "sync_section",
+  "sync_retry_max",
+  "pending_ttl_hours"
+ ],
+ "fields": [
+  {
+   "fieldname": "features_section",
+   "fieldtype": "Section Break",
+   "label": "Feature Flags"
+  },
+  {
+   "default": "1",
+   "description": "PWA form ch\u00ednh: Measurement Book (nghi\u1ec7m thu kh\u1ed1i l\u01b0\u1ee3ng).",
+   "fieldname": "enable_measurement_book",
+   "fieldtype": "Check",
+   "label": "Enable Measurement Book"
+  },
+  {
+   "default": "0",
+   "description": "Nh\u1eadt k\u00fd thi c\u00f4ng ng\u00e0y (Task Progress Entry). T\u1eaft m\u1eb7c \u0111\u1ecbnh \u2014 b\u1eadt khi s\u1eb5n s\u00e0ng.",
+   "fieldname": "enable_site_diary",
+   "fieldtype": "Check",
+   "label": "Enable Site Diary (TPE)"
+  },
+  {
+   "default": "0",
+   "description": "H\u0110 C\u0110T / \u0111\u1ee3t nghi\u1ec7m thu client (RA). T\u1eaft cho \u0111\u1ebfn khi BuildSuite/H2Q ship module.",
+   "fieldname": "enable_client_ra_billing",
+   "fieldtype": "Check",
+   "label": "Enable Client RA Billing"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_offline_sync",
+   "fieldtype": "Check",
+   "label": "Enable Offline Sync (Supabase)"
+  },
+  {
+   "fieldname": "column_break_feat",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "BOQ Qty",
+   "description": "Ngu\u1ed3n % ho\u00e0n th\u00e0nh tr\u00ean dashboard FastCons.",
+   "fieldname": "dashboard_progress_source",
+   "fieldtype": "Select",
+   "label": "Dashboard Progress Source",
+   "options": "BOQ Qty\nBOQ Amount\nProject Percent Complete"
+  },
+  {
+   "default": "Field Gloves",
+   "fieldname": "ui_profile",
+   "fieldtype": "Select",
+   "label": "UI Profile",
+   "options": "Field Gloves\nOffice"
+  },
+  {
+   "default": "1",
+   "fieldname": "allow_mobile_revise_rejected",
+   "fieldtype": "Check",
+   "label": "Allow Mobile Revise Rejected MB"
+  },
+  {
+   "fieldname": "field_policy_section",
+   "fieldtype": "Section Break",
+   "label": "Field Policies"
+  },
+  {
+   "default": "Warn",
+   "description": "Khi kh\u1ed1i l\u01b0\u1ee3ng nh\u1eadp > remaining BOQ.",
+   "fieldname": "boq_over_limit_policy",
+   "fieldtype": "Select",
+   "label": "BOQ Over-Limit Policy",
+   "options": "Warn\nBlock\nWarn Require Note",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "N\u1ebfu b\u1eadt: submit_measurement t\u1ef1 chuy\u1ec3n Pending Approval (tr\u1eeb khi client override).",
+   "fieldname": "auto_request_approval_default",
+   "fieldtype": "Check",
+   "label": "Auto Request Approval on Submit"
+  },
+  {
+   "fieldname": "column_break_policy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "gps_required",
+   "fieldtype": "Check",
+   "label": "GPS Required on Submit"
+  },
+  {
+   "default": "Off",
+   "description": "D\u00f9ng Project.custom_h2q_site_geofence_json khi c\u00f3.",
+   "fieldname": "geofence_enforcement",
+   "fieldtype": "Select",
+   "label": "Geofence Enforcement",
+   "options": "Off\nWarn\nBlock"
+  },
+  {
+   "default": "0",
+   "fieldname": "min_photos_on_submit",
+   "fieldtype": "Int",
+   "label": "Min Photos on Submit",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "min_photos_on_approve",
+   "fieldtype": "Int",
+   "label": "Min Photos on Approve",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval Matrix"
+  },
+  {
+   "description": "Role \u0111\u01b0\u1ee3c g\u1eedi duy\u1ec7t / duy\u1ec7t. L\u01b0u Settings + (tu\u1ef3 ch\u1ecdn) seed l\u1ea1i Workflow.",
+   "fieldname": "approval_roles",
+   "fieldtype": "Table",
+   "label": "Approval Roles",
+   "options": "H2Q Settings Role"
+  },
+  {
+   "default": "1",
+   "description": "Khi Save: \u0111\u1ed3ng b\u1ed9 Workflow \"H2Q Measurement Book Approval\" t\u1eeb b\u1ea3ng role.",
+   "fieldname": "resync_workflow_on_save",
+   "fieldtype": "Check",
+   "label": "Resync Workflow on Save"
+  },
+  {
+   "fieldname": "notify_section",
+   "fieldtype": "Section Break",
+   "label": "Notifications (Telegram)"
+  },
+  {
+   "default": "1",
+   "description": "Bot token v\u1eabn n\u1eb1m trong site_config (secret). \u0110\u00e2y ch\u1ec9 b\u1eadt/t\u1eaft + routing chat.",
+   "fieldname": "telegram_enabled",
+   "fieldtype": "Check",
+   "label": "Telegram Enabled"
+  },
+  {
+   "default": "485567058",
+   "fieldname": "telegram_chat_id_pending",
+   "fieldtype": "Data",
+   "label": "Chat ID \u2014 Pending Approval"
+  },
+  {
+   "default": "485567058",
+   "fieldname": "telegram_chat_id_certified",
+   "fieldtype": "Data",
+   "label": "Chat ID \u2014 Certified"
+  },
+  {
+   "fieldname": "column_break_tg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "485567058",
+   "fieldname": "telegram_chat_id_alerts",
+   "fieldtype": "Data",
+   "label": "Chat ID \u2014 Alerts (over BOQ)"
+  },
+  {
+   "default": "1",
+   "fieldname": "telegram_notify_on_pending",
+   "fieldtype": "Check",
+   "label": "Notify on Pending"
+  },
+  {
+   "default": "1",
+   "fieldname": "telegram_notify_on_certified",
+   "fieldtype": "Check",
+   "label": "Notify on Certified"
+  },
+  {
+   "default": "1",
+   "fieldname": "telegram_notify_on_over_limit",
+   "fieldtype": "Check",
+   "label": "Notify on BOQ Over Limit"
+  },
+  {
+   "fieldname": "hr_section",
+   "fieldtype": "Section Break",
+   "label": "HR Defaults"
+  },
+  {
+   "fieldname": "default_employee_roles",
+   "fieldtype": "Table",
+   "label": "Default Roles for New Employee User",
+   "options": "H2Q Settings Employee Role"
+  },
+  {
+   "default": "Both",
+   "fieldname": "workforce_mode",
+   "fieldtype": "Select",
+   "label": "Workforce Mode",
+   "options": "ERPNext HR\nBuildSuite Field\nBoth"
+  },
+  {
+   "fieldname": "sync_section",
+   "fieldtype": "Section Break",
+   "label": "Offline Sync"
+  },
+  {
+   "default": "5",
+   "fieldname": "sync_retry_max",
+   "fieldtype": "Int",
+   "label": "Sync Retry Max",
+   "non_negative": 1
+  },
+  {
+   "default": "72",
+   "fieldname": "pending_ttl_hours",
+   "fieldtype": "Int",
+   "label": "Pending TTL (hours)",
+   "non_negative": 1
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-11-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "H2Q Core",
+ "name": "H2Q Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Projects Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

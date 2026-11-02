@@ -27,7 +27,11 @@ delete_file_data_content = "h2q_core.storage.r2_file.delete_file_data_content"
 # ---------------------------------------------------------------------------
 doc_events = {
 	"Measurement Book": {
-		"on_update": "h2q_core.telegram_bot.on_measurement_book_update",
-		"on_submit": "h2q_core.telegram_bot.on_measurement_book_submit",
+		"on_update": "h2q_core.measurement_book_events.on_update",
+		"on_submit": "h2q_core.measurement_book_events.on_submit",
 	},
 }
+
+# Sync H2Q custom fields + Measurement Book workflow after every migrate
+after_migrate = ["h2q_core.setup_phase2.after_migrate"]
+

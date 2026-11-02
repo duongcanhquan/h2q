@@ -21,8 +21,8 @@ export function LoginForm() {
     setLoading(true);
     try {
       await login(usr.trim(), pwd);
-      const next = search.get("next") || "/";
-      router.replace(next.startsWith("/") ? next : "/");
+      const next = search.get("next") || "/dashboard";
+      router.replace(next.startsWith("/") ? next : "/dashboard");
     } catch (err) {
       const message =
         err instanceof FrappeApiError
