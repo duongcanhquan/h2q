@@ -1,0 +1,17 @@
+{
+  "r2_account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+  "r2_access_key_id": "YOUR_R2_ACCESS_KEY_ID",
+  "r2_secret_access_key": "YOUR_R2_SECRET_ACCESS_KEY",
+  "r2_bucket": "h2q-construction-files",
+  "r2_public_url": "https://files.h2q.com.vn",
+  "r2_endpoint_url": "https://YOUR_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com",
+  "r2_region_name": "auto",
+  "r2_multipart_threshold": 8388608,
+  "r2_multipart_chunksize": 16777216,
+  "r2_max_concurrency": 4,
+  "r2_connect_timeout": 10,
+  "r2_read_timeout": 120,
+  "r2_max_attempts": 5,
+  "r2_offload_all_files": 0,
+  "r2_allowed_extensions": ".jpg,.jpeg,.png,.webp,.gif,.heic,.tif,.tiff,.bmp,.dwg,.dxf,.dgn,.rvt,.ifc,.pdf,.plt,.dwf"
+}

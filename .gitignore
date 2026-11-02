@@ -1,0 +1,38 @@
+# Dependencies & build
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+site_config.json
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Third-party clones (keep local; clone separately)
+h2q_erp/
+buildsuite_src/
+
+# Logs / coverage
+*.log
+coverage/
+.turbo/

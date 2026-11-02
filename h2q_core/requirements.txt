@@ -1,0 +1,15 @@
+# H2Q Core — Python dependencies for the Frappe bench environment
+#
+# Install inside the bench (recommended):
+#   cd /path/to/frappe-bench
+#   bench pip install -r apps/h2q_core/requirements.txt
+#
+# Or target the site venv explicitly:
+#   ./env/bin/pip install -r apps/h2q_core/requirements.txt
+#
+# Then clear cache / restart workers:
+#   bench --site <site> clear-cache
+#   bench restart
+
+boto3>=1.34.0
+botocore>=1.34.0
