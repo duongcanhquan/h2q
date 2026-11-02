@@ -10,9 +10,14 @@ Monorepo quản lý thi công [h2q.com.vn](https://h2q.com.vn).
 | `buildsuite_src/` | Reference BuildSuite (không deploy từ monorepo) |
 | `h2q_erp/` | frappe_docker reference |
 
-## Cài đặt & deploy
+## Tài liệu vận hành
 
-→ **[`docs/INSTALL.md`](docs/INSTALL.md)** (Frappe → Supabase → Vercel).
+| Doc | Nội dung |
+|-----|----------|
+| [`docs/FEATURES_CATALOG.md`](docs/FEATURES_CATALOG.md) | **Catalog chi tiết** mọi tính năng + cách test |
+| [`docs/INSTALL.md`](docs/INSTALL.md) | Lộ trình cài Frappe → Supabase → Vercel |
+| [`docs/H2Q_SETTINGS.md`](docs/H2Q_SETTINGS.md) | Knob Desk Settings |
+| [`docs/AUDIT_STATUS.md`](docs/AUDIT_STATUS.md) | Audit ship |
 
 ## Dev nhanh (frontend)
 

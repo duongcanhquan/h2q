@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { HardHat, LogOut } from "lucide-react";
+import { ClipboardCheck, HardHat, LogOut } from "lucide-react";
 import { logout } from "@/lib/frappe/client";
 import { useState } from "react";
 
@@ -50,6 +50,13 @@ export function AppShell({
             </p>
             <h1 className="truncate text-lg font-semibold text-slate-900">{title}</h1>
           </div>
+          <Link
+            href="/approvals"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-white text-slate-700 shadow-sm ring-1 ring-slate-200"
+            aria-label="Chờ duyệt"
+          >
+            <ClipboardCheck className="size-5" />
+          </Link>
           <button
             type="button"
             onClick={onLogout}

@@ -6,6 +6,8 @@ import type {
   BoqItemDefaults,
   FrappeOk,
   H2qPublicSettings,
+  MeasurementApprovalResult,
+  PendingApprovalRow,
   ProjectRow,
   ProjectWbsData,
   SubmitMeasurementPayload,
@@ -115,6 +117,46 @@ export async function submitMeasurement(
   const { data } = await frappeClient.post("/api/method/h2q_core.api.submit_measurement", {
     payload: JSON.stringify(payload),
   });
+  return unwrapMethod(data);
+}
+
+export async function getPendingApprovals(project?: string): Promise<{
+  items: PendingApprovalRow[];
+  count: number;
+}> {
+  const body = new URLSearchParams();
+  if (project) body.set("project", project);
+  const { data } = await frappeClient.post(
+    "/api/method/h2q_core.api.get_pending_approvals",
+    body,
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+  );
+  return unwrapMethod(data);
+}
+
+export async function approveMeasurement(
+  measurement_book: string,
+): Promise<MeasurementApprovalResult> {
+  const body = new URLSearchParams({ measurement_book });
+  const { data } = await frappeClient.post(
+    "/api/method/h2q_core.api.approve_measurement",
+    body,
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+  );
+  return unwrapMethod(data);
+}
+
+export async function rejectMeasurement(
+  measurement_book: string,
+  reason?: string,
+): Promise<MeasurementApprovalResult> {
+  const body = new URLSearchParams({ measurement_book });
+  if (reason) body.set("reason", reason);
+  const { data } = await frappeClient.post(
+    "/api/method/h2q_core.api.reject_measurement",
+    body,
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+  );
   return unwrapMethod(data);
 }
 

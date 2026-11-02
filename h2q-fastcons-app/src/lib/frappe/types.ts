@@ -135,3 +135,34 @@ export type SessionUser = {
   user: string;
   full_name?: string;
 };
+
+export type PendingApprovalRow = {
+  name: string;
+  project?: string;
+  project_name?: string | null;
+  work_order?: string;
+  date?: string;
+  status?: string;
+  measured_total?: number;
+  measured_by?: string;
+  custom_h2q_approval_status?: string;
+  custom_h2q_task?: string;
+  custom_h2q_boq_item?: string;
+  custom_h2q_boq_over_limit?: number;
+  custom_h2q_submitted_by_user?: string;
+  modified?: string;
+};
+
+export type MeasurementApprovalResult = {
+  measurement_book: string;
+  status?: string;
+  approval_status?: string;
+  project?: string;
+  work_order?: string;
+  measured_total?: number;
+  task?: string;
+  boq_item?: string;
+  boq_over_limit?: number;
+  reject_reason?: string | null;
+  certified_by?: string | null;
+};
