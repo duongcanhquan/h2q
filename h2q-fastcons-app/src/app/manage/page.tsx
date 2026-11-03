@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { OfficeLinks } from "@/components/manage/OfficeLinks";
 import { ProjectOffice } from "@/components/manage/ProjectOffice";
 
 export default function ManagePage() {
@@ -10,6 +11,7 @@ export default function ManagePage() {
           Tạo công trình, hạng mục và công việc. Khối lượng kế hoạch nhân đơn giá ra thành tiền. Số đã làm lấy từ phiếu đã duyệt.
         </p>
       </section>
+      <OfficeLinks />
       <ProjectOffice />
     </AppShell>
   );

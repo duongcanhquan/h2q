@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ClipboardCheck, FolderKanban, HardHat, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, FolderKanban, GitPullRequest, HardHat, LayoutDashboard, LogOut, Package, Users } from "lucide-react";
 import { logout } from "@/lib/api/client";
 import { useEffect, useState } from "react";
 
 const NAV = [
-  { href: "/dashboard", label: "Hiện trường", icon: LayoutDashboard },
-  { href: "/manage", label: "Quản lý", icon: FolderKanban },
-  { href: "/approvals", label: "Duyệt", icon: ClipboardCheck },
+  { href: "/dashboard", label: "Hiện trường", icon: LayoutDashboard, mobile: true },
+  { href: "/manage", label: "Công trình", icon: FolderKanban, mobile: true },
+  { href: "/estimate", label: "Dự toán", icon: FileSpreadsheet, mobile: false },
+  { href: "/packages", label: "Gói việc", icon: Package, mobile: false },
+  { href: "/contracts", label: "Giao thầu", icon: GitPullRequest, mobile: false },
+  { href: "/changes", label: "Phát sinh", icon: GitPullRequest, mobile: false },
+  { href: "/approvals", label: "Duyệt", icon: ClipboardCheck, mobile: true },
 ] as const;
 
 export function AppShell({
@@ -53,7 +57,8 @@ export function AppShell({
     }
   }
 
-  const items = admin ? [...NAV, { href: "/users", label: "Người dùng", icon: Users }] : [...NAV];
+  const items = admin ? [...NAV, { href: "/users", label: "Người dùng", icon: Users, mobile: true }] : [...NAV];
+  const mobileItems = items.filter((item) => item.mobile);
 
   return (
     <div className="min-h-full lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -131,7 +136,7 @@ export function AppShell({
           {children}
         </main>
         <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-slate-200 bg-white lg:hidden">
-          {items.map((item) => {
+          {mobileItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return (

@@ -47,6 +47,8 @@ export type BoqRecord = {
   unit: string | null;
   planned_qty: number;
   rate: number;
+  boq_id: string | null;
+  work_package_id: string | null;
 };
 
 export type AppSettingsRow = {
@@ -144,6 +146,66 @@ export type MembershipRow = {
   member_role: string;
 };
 
+export type BoqHeaderRow = {
+  id: string;
+  project_id: string;
+  code: string;
+  title: string;
+  revision: number;
+  status: string;
+  note: string | null;
+  created_at: string;
+};
+
+export type WorkPackageRow = {
+  id: string;
+  project_id: string;
+  code: string;
+  name: string;
+  budget: number;
+  created_at: string;
+};
+
+export type SubcontractorRow = {
+  id: string;
+  name: string;
+  tax_code: string | null;
+  phone: string | null;
+  created_at: string;
+};
+
+export type WorkOrderRow = {
+  id: string;
+  project_id: string;
+  subcontractor_id: string;
+  code: string;
+  title: string;
+  retention_percent: number;
+  status: string;
+  created_at: string;
+};
+
+export type WorkOrderLineRow = {
+  id: string;
+  work_order_id: string;
+  boq_item_id: string | null;
+  description: string;
+  unit: string | null;
+  qty: number;
+  rate: number;
+};
+
+export type ScopeChangeRow = {
+  id: string;
+  project_id: string;
+  code: string;
+  title: string;
+  reason: string | null;
+  amount: number;
+  status: string;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -156,6 +218,12 @@ export type Database = {
       measurements: Table<MeasurementRecord>;
       diaries: Table<DiaryRecord>;
       project_progress: Table<ProjectProgressRow>;
+      boq_headers: Table<BoqHeaderRow>;
+      work_packages: Table<WorkPackageRow>;
+      subcontractors: Table<SubcontractorRow>;
+      work_orders: Table<WorkOrderRow>;
+      work_order_lines: Table<WorkOrderLineRow>;
+      scope_changes: Table<ScopeChangeRow>;
     };
     Views: Record<string, never>;
     Functions: {
