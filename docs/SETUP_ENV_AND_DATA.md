@@ -1,5 +1,7 @@
 # Hướng dẫn cài biến số & dữ liệu H2Q
 
+> PWA hiện không dùng Frappe. Làm theo `h2q-fastcons-app/supabase/README.md` và `.env.example`. Phần bên dưới là cấu hình bản Frappe cũ.
+
 Tài liệu này liệt kê **mọi biến / secret / dữ liệu master** cần có để hệ thống chạy.  
 Thứ tự: **(1) Cloudflare R2 → (2) Telegram → (3) Frappe site_config → (4) Seed master → (5) Supabase → (6) Vercel env → (7) Webhook**.
 

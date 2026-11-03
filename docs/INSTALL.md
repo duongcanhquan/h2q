@@ -1,3 +1,7 @@
+# Lộ trình cài đặt H2Q (bản Frappe, không còn dùng cho PWA)
+
+App `h2q-fastcons-app` đã chuyển sang Supabase. Cài PWA theo `h2q-fastcons-app/supabase/README.md`. Phần dưới đây chỉ còn giá trị nếu bạn tự chạy site Frappe cũ.
+
 # Lộ trình cài đặt H2Q (chạy thật)
 
 Thứ tự: **Frappe/BuildSuite → h2q_core → Supabase → FastCons (Vercel)**.

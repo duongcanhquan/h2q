@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import Any
 
 import frappe
+
+from h2q_core.approval_chain import chain_steps
 from frappe.utils import cint, flt
 
 DOCTYPE = "H2Q Settings"
@@ -71,6 +73,7 @@ def get_settings() -> dict[str, Any]:
 			"can_submit": cint(r.can_submit),
 			"can_approve": cint(r.can_approve),
 			"sort_order": cint(r.sort_order),
+			"approval_level": cint(r.get("approval_level")),
 		}
 		for r in (doc.approval_roles or [])
 		if r.role
@@ -106,6 +109,7 @@ def get_public_settings() -> dict[str, Any]:
 		"sync_retry_max": cint(s["sync_retry_max"]),
 		"pending_ttl_hours": cint(s["pending_ttl_hours"]),
 		"telegram_enabled": cint(s["telegram_enabled"]),
+		"approval_chain_length": len(chain_steps(s.get("approval_roles") or [])),
 	}
 	frappe.cache().set_value("h2q_settings_public", public, expires_in_sec=60)
 	return public

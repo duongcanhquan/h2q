@@ -3,9 +3,21 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HardHat, Loader2 } from "lucide-react";
-import { login } from "@/lib/frappe/client";
+import { login } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { FrappeApiError } from "@/lib/frappe/errors";
+
+function loginError(err: unknown) {
+  if (err instanceof ApiError && err.message.trim()) return err.message;
+  return "Đăng nhập thất bại. Thử lại.";
+}
+
+function safeNext(raw: string | null) {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) {
+    return "/dashboard";
+  }
+  return raw;
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -21,16 +33,9 @@ export function LoginForm() {
     setLoading(true);
     try {
       await login(usr.trim(), pwd);
-      const next = search.get("next") || "/dashboard";
-      router.replace(next.startsWith("/") ? next : "/dashboard");
+      router.replace(safeNext(search.get("next")));
     } catch (err) {
-      const message =
-        err instanceof FrappeApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Đăng nhập thất bại";
-      setError(message);
+      setError(loginError(err));
     } finally {
       setLoading(false);
     }
@@ -53,7 +58,7 @@ export function LoginForm() {
         {error ? <ErrorBanner message={error} /> : null}
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium text-slate-700">Tài khoản Frappe</span>
+          <span className="text-sm font-medium text-slate-700">Email</span>
           <input
             className="min-h-14 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 text-base outline-none ring-amber-500 focus:border-amber-500 focus:ring-2"
             autoComplete="username"

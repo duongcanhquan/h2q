@@ -78,7 +78,8 @@ Draft → Pending Approval → Approved  → API gọi certify_measurement_book
 | `get_active_projects` | session | Projects + `percent_complete_display` (theo Settings) |
 | `get_project_wbs` | `project` | Tasks + BOQ items (`remaining_qty`, `over_limit`) |
 | `get_boq_item_defaults` | `boq_item` hoặc `project`+`task` | unit, rate, remaining |
-| `submit_measurement` | project, task, qty, optional WO/GPS/ảnh/… | Tạo MB Draft + custom fields; optional auto Pending |
+| `submit_measurement` | project, task, qty, optional WO/GPS/ảnh/entry_kind | Tạo MB Draft + custom fields; geofence; optional auto Pending |
+| `submit_site_diary` | project, date, weather, lines, GPS, ảnh | Task Progress Entry; cập nhật nếu cùng ngày cùng hạng mục |
 | `request_measurement_approval` | `measurement_book` | → Pending + Telegram |
 | `approve_measurement` | `measurement_book` | → Approved + **`buildsuite_core.api.subcontract.certify_measurement_book`** |
 | `reject_measurement` | `measurement_book`, `reason` | → Rejected, BS status vẫn Draft |
@@ -204,9 +205,10 @@ Dashboard Realtime cập nhật project_progress
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Geofence polygon trong/ngoài vùng | 🟡 Setting only |
-| Duyệt nhiều cấp (>1 Pending) | 🟡 1 cấp |
-| Nhật ký TPE trên PWA | 🟡 Flag `enable_site_diary` |
+| Geofence polygon trong/ngoài vùng | ✅ `evaluate_geofence` trên submit MB và nhật ký. Policy Off / Warn / Block. Không có polygon thì bỏ qua |
+| Duyệt nhiều cấp (>1 Pending) | ✅ Khi `approval_level` > 0 trên H2Q Settings Role. 0 = một cấp như cũ |
+| Nhật ký TPE trên PWA | ✅ `/project/[id]/diary` + `submit_site_diary`. Cờ `enable_site_diary` vẫn mặc định tắt |
+| Loại phiếu thực hiện / nghiệm thu | ✅ `custom_h2q_entry_kind` + cột `entry_kind` trên buffer |
 | HĐ CĐT / RA client | ❌ Flag off |
 | Zalo OA | ❌ |
 | E2E tự động trên CI với Frappe sống | ❌ Cần bench server |

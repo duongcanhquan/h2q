@@ -2,9 +2,9 @@
 
 import { Camera, ImagePlus, Trash2, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
-import { uploadSitePhoto } from "@/lib/frappe/client";
+import { uploadSitePhoto } from "@/lib/api/client";
 import { Spinner } from "@/components/ui/Spinner";
-import { FrappeApiError } from "@/lib/frappe/errors";
+import { ApiError } from "@/lib/api/errors";
 import { Card, CardContent } from "@/components/ui/card";
 
 export type PhotoItem = {
@@ -17,15 +17,16 @@ export type PhotoItem = {
 };
 
 /**
- * Chụp / chọn ảnh → preview ngay → upload Frappe File API
- * (h2q_core R2 write_file) → lưu remoteUrl (R2) vào state.
+ * Chụp / chọn ảnh → preview ngay → lưu lên Supabase Storage.
  */
 export function PhotoCapture({
   value,
   onChange,
+  emptyLabel = "Chưa có ảnh",
 }: {
   value: PhotoItem[];
   onChange: (next: PhotoItem[]) => void;
+  emptyLabel?: string;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -57,9 +58,7 @@ export function PhotoCapture({
         });
       } catch (err) {
         const message =
-          err instanceof FrappeApiError || err instanceof Error
-            ? err.message
-            : "Upload R2 thất bại";
+          err instanceof ApiError || err instanceof Error ? err.message : "Tải ảnh thất bại";
         uploaded.push({ ...stub, uploading: false, error: message });
         setGlobalError(message);
       }
@@ -85,7 +84,7 @@ export function PhotoCapture({
       <CardContent className="space-y-3 pt-4">
         <p className="text-sm font-medium text-slate-800">Chụp ảnh / Tải ảnh lên</p>
         <p className="text-xs text-slate-500">
-          Ảnh được upload lên Cloudflare R2 ngay khi chọn. Preview hiển thị bên dưới.
+          Ảnh được lưu ngay khi chọn. Nút xóa chỉ gỡ ảnh khỏi phiếu này.
         </p>
 
         <div className="grid grid-cols-2 gap-3">
@@ -129,7 +128,7 @@ export function PhotoCapture({
         {value.length === 0 ? (
           <div className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-500">
             <UploadCloud className="mb-2 size-8 opacity-60" />
-            <p className="text-sm">Chưa có ảnh nghiệm thu</p>
+            <p className="text-sm">{emptyLabel}</p>
           </div>
         ) : (
           <ul className="grid grid-cols-2 gap-3">
@@ -147,12 +146,12 @@ export function PhotoCapture({
                 {photo.uploading ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/45 text-white">
                     <Spinner className="size-7 border-white" />
-                    <span className="text-xs font-medium">Đang lên R2…</span>
+                    <span className="text-xs font-medium">Đang lưu…</span>
                   </div>
                 ) : null}
                 {photo.remoteUrl ? (
                   <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white">
-                    <UploadCloud className="size-3" /> R2 OK
+                    <UploadCloud className="size-3" /> Đã lưu
                   </span>
                 ) : null}
                 {photo.error ? (

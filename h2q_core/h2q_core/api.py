@@ -7,6 +7,7 @@ Endpoints (POST /api/method/...):
   h2q_core.api.get_project_wbs
   h2q_core.api.get_boq_item_defaults
   h2q_core.api.submit_measurement
+  h2q_core.api.submit_site_diary
   h2q_core.api.request_measurement_approval
   h2q_core.api.approve_measurement
   h2q_core.api.reject_measurement
@@ -310,7 +311,27 @@ def get_project_wbs(project: str) -> dict[str, Any]:
 				if it.task:
 					items_by_task.setdefault(it.task, []).append(row)
 
+		ledgers = _ledgers_by_boq(project)
+		for row in boq_items:
+			book = ledgers.get(row["name"]) or {}
+			row["executed_qty"] = book.get("executed", 0)
+			row["executed_pending_qty"] = book.get("executed_pending", 0)
+			row["accepted_qty"] = book.get("accepted", 0)
+			row["accepted_pending_qty"] = book.get("accepted_pending", 0)
+			executed = flt(row["executed_qty"])
+			accepted = flt(row["accepted_qty"])
+			cap = executed if executed > 0 else flt(row["planned_qty"])
+			row["acceptance_room"] = cap - accepted if cap else None
+
 		task_payload = [{**t, "boq_items": items_by_task.get(t.name, [])} for t in tasks]
+		site_geofence = None
+		if frappe.get_meta("Project").has_field("custom_h2q_site_geofence_json"):
+			from h2q_core.geo import parse_ring
+
+			raw_fence = frappe.db.get_value("Project", project, "custom_h2q_site_geofence_json")
+			ring = parse_ring(raw_fence)
+			if ring:
+				site_geofence = {"ring": ring}
 
 		return _ok(
 			{
@@ -319,6 +340,7 @@ def get_project_wbs(project: str) -> dict[str, Any]:
 				"tasks": task_payload,
 				"boqs": boq_rows,
 				"boq_items": boq_items,
+				"site_geofence": site_geofence,
 			}
 		)
 	except Exception:
@@ -385,6 +407,7 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 			"latitude",
 			"longitude",
 			"auto_request_approval",
+			"entry_kind",
 		):
 			if key in kwargs and kwargs[key] not in (None, ""):
 				data.setdefault(key, kwargs[key])
@@ -397,6 +420,10 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 		description = (data.get("description") or "").strip()
 		mb_date = data.get("date") or data.get("measurement_date") or today()
 		remarks = data.get("remarks") or ""
+		from h2q_core.field_rules import normalize_entry_kind, split_entry_kind_remark
+
+		kind_token, remarks = split_entry_kind_remark(remarks)
+		entry_kind = normalize_entry_kind(data.get("entry_kind") or kind_token)
 		uom = data.get("uom")
 		measured_by = data.get("measured_by") or frappe.session.user
 
@@ -504,28 +531,32 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 		if not cint(cfg.get("enable_measurement_book", 1)):
 			frappe.throw(_("Measurement Book is disabled in H2Q Settings."))
 
-		# BOQ over-limit policy from H2Q Settings (Warn / Block / Warn Require Note)
+		from h2q_core.field_rules import check_quantity_slip, empty_ledger
+
+		# Four QS columns: contract, approved execution, acceptance.
+		# A single slip is checked against the running total, not only its own qty.
 		over_limit = 0
 		remaining = None
+		ledger = empty_ledger()
+		quantity_message = ""
 		if boq_item:
 			planned = flt(boq_item.get("planned_qty"))
-			actual = flt(boq_item.get("actual_qty"))
-			remaining = planned - actual
-			if planned > 0 and quantity > remaining:
-				over_limit = 1
-
-		policy = cfg.get("boq_over_limit_policy") or "Warn"
-		if over_limit and policy == "Block":
-			frappe.throw(
-				_(
-					"Quantity {0} exceeds remaining BOQ qty {1}. "
-					"Blocked by H2Q Settings (BOQ Over-Limit Policy = Block)."
-				).format(quantity, remaining)
+			ledger = _ledger_for_boq_item(project, boq_item.get("name"))
+			verdict = check_quantity_slip(
+				kind=entry_kind,
+				qty=quantity,
+				contract=planned,
+				executed=ledger["executed"],
+				accepted=ledger["accepted"],
+				policy=cfg.get("boq_over_limit_policy") or "Warn",
+				has_note=bool((remarks or "").strip()),
+				include_pending_executed=ledger["executed_pending"],
 			)
-		if over_limit and policy == "Warn Require Note" and not (remarks or "").strip():
-			frappe.throw(
-				_("BOQ over limit — remarks/note is required (H2Q Settings policy).")
-			)
+			over_limit = int(verdict["over_limit"])
+			remaining = verdict["room"]
+			quantity_message = str(verdict["message"] or "")
+			if verdict["action"] == "block":
+				frappe.throw(_(quantity_message))
 
 		gps_lat = data.get("gps_lat", data.get("latitude"))
 		gps_lng = data.get("gps_lng", data.get("longitude"))
@@ -538,6 +569,15 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 			frappe.throw(
 				_("At least {0} photo(s) required on submit (H2Q Settings).").format(min_photos)
 			)
+
+		fence_raw = None
+		if frappe.get_meta("Project").has_field("custom_h2q_site_geofence_json"):
+			fence_raw = frappe.db.get_value("Project", project, "custom_h2q_site_geofence_json")
+		from h2q_core.geo import evaluate_geofence
+
+		geofence = evaluate_geofence(cfg.get("geofence_enforcement"), gps_lat, gps_lng, fence_raw)
+		if geofence["action"] == "block":
+			frappe.throw(_(geofence["message"]))
 
 		if _child_has_field("Measurement Book Entry", "custom_h2q_boq_item") and boq_item:
 			entry["custom_h2q_boq_item"] = boq_item.get("name")
@@ -554,7 +594,9 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 		if billed_amount:
 			meta_bits.append(f"Billed Amount: {billed_amount}")
 		if over_limit:
-			meta_bits.append("WARN: over BOQ remaining qty")
+			meta_bits.append(quantity_message or "WARN: quantity over the QS column")
+		if geofence["outside"]:
+			meta_bits.append("WARN: outside geofence")
 		if image_urls:
 			meta_bits.append(f"Photos: {len(image_urls)}")
 			meta_bits.append(f"Image: {image_urls[0]}")
@@ -581,6 +623,8 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 			gps_acc=gps_acc,
 			over_limit=over_limit,
 			user=frappe.session.user,
+			entry_kind=entry_kind,
+			geofence_outside=geofence["outside"],
 		)
 
 		doc = frappe.get_doc(payload_doc)
@@ -622,6 +666,12 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 				"boq_item": (boq_item or {}).get("name"),
 				"remaining_qty": remaining,
 				"boq_over_limit_warn": over_limit,
+				"quantity_message": quantity_message or None,
+				"executed_qty": ledger["executed"],
+				"accepted_qty": ledger["accepted"],
+				"entry_kind": entry_kind,
+				"geofence_outside": geofence["outside"],
+				"geofence_reason": geofence["reason"],
 				"image_url": image_urls[0] if image_urls else None,
 				"attached_files": attached,
 				"gps": {
@@ -642,6 +692,24 @@ def submit_measurement(payload: str | dict | None = None, **kwargs) -> dict[str,
 get_project_tasks_and_boq = get_project_wbs
 create_draft_measurement_book = submit_measurement
 submit_daily_report = submit_measurement
+
+
+@frappe.whitelist()
+def submit_site_diary(payload: str | dict | None = None, **kwargs) -> dict[str, Any]:
+	"""One site day → Task Progress Entry rows. See docs/SPEC_P0_HIEN_TRUONG.md."""
+	try:
+		data = _parse_payload(payload)
+		for key, value in kwargs.items():
+			if value not in (None, ""):
+				data.setdefault(key, value)
+		from h2q_core.site_diary import create_site_diary
+
+		return _ok(create_site_diary(data))
+	except frappe.ValidationError:
+		raise
+	except Exception:
+		frappe.log_error(title="submit_site_diary failed", message=frappe.get_traceback())
+		frappe.throw(_("Không ghi được nhật ký thi công. See Error Log."))
 
 
 # ---------------------------------------------------------------------------
@@ -737,6 +805,8 @@ def request_measurement_approval(measurement_book: str) -> dict[str, Any]:
 		doc.custom_h2q_approval_status = "Pending Approval"
 		doc.custom_h2q_telegram_notified = 0
 		doc.custom_h2q_reject_reason = None
+		if doc.meta.has_field("custom_h2q_approval_level"):
+			doc.custom_h2q_approval_level = 0
 		if doc.meta.has_field("custom_h2q_submitted_by_user"):
 			doc.custom_h2q_submitted_by_user = frappe.session.user
 		_link_employee_if_possible(doc)
@@ -775,8 +845,27 @@ def approve_measurement(measurement_book: str) -> dict[str, Any]:
 			frappe.throw(_("Cannot approve from status {0}.").format(current))
 
 		from h2q_core.settings import get_settings
+		from h2q_core.approval_chain import chain_steps, decide_approval
 
 		cfg = get_settings()
+		steps = []
+		decision = None
+		if doc.meta.has_field("custom_h2q_approval_level"):
+			steps = chain_steps(cfg.get("approval_roles") or [])
+			decision = decide_approval(
+				cint(doc.custom_h2q_approval_level),
+				steps,
+				frappe.get_roles(frappe.session.user),
+			)
+			if not decision["allowed"]:
+				frappe.throw(
+					_("Cấp duyệt này cần vai trò: {0}.").format(
+						", ".join(decision["required_roles"]) or "—"
+					)
+				)
+			doc.custom_h2q_approval_level = decision["next_level"]
+			_append_approval_log(doc, "approve", decision["required_roles"])
+
 		min_photos = cint(cfg.get("min_photos_on_approve"))
 		if min_photos:
 			photo_count = 0
@@ -796,11 +885,34 @@ def approve_measurement(measurement_book: str) -> dict[str, Any]:
 					)
 				)
 
+		if decision and not decision["final"]:
+			doc.custom_h2q_approval_status = "Pending Approval"
+			doc.custom_h2q_telegram_notified = 0
+			doc.custom_h2q_reject_reason = None
+			doc.save()
+			frappe.db.commit()
+			payload = _mb_approval_payload(doc)
+			payload["awaiting_next_level"] = 1
+			payload["approval_levels"] = len(steps)
+			return _ok(payload)
+
+		_assert_final_quantity(doc)
 		doc.custom_h2q_approval_status = "Approved"
 		doc.custom_h2q_reject_reason = None
 		doc.save()
 
-		# Wrap BuildSuite core — do NOT set status=Certified manually
+		from h2q_core.field_rules import certifies_on_approval
+
+		kind = getattr(doc, "custom_h2q_entry_kind", None) if doc.meta.has_field("custom_h2q_entry_kind") else None
+		if not certifies_on_approval(kind):
+			frappe.db.commit()
+			payload = _mb_approval_payload(doc)
+			payload["certified"] = 0
+			payload["ledger"] = "executed"
+			return _ok(payload)
+
+		# Wrap BuildSuite core — do NOT set status=Certified manually.
+		# Chỉ phiếu Nghiệm thu mới vào sổ chứng nhận / sẵn sàng thanh toán.
 		from buildsuite_core.api.subcontract import certify_measurement_book
 
 		certified = certify_measurement_book(measurement_book)
@@ -839,6 +951,9 @@ def reject_measurement(measurement_book: str, reason: str | None = None) -> dict
 
 		doc.custom_h2q_approval_status = "Rejected"
 		doc.custom_h2q_reject_reason = (reason or "").strip() or _("Rejected")
+		if doc.meta.has_field("custom_h2q_approval_level"):
+			doc.custom_h2q_approval_level = 0
+		_append_approval_log(doc, "reject", [])
 		doc.save()
 		frappe.db.commit()
 		return _ok(_mb_approval_payload(doc))
@@ -861,31 +976,50 @@ def get_pending_approvals(project: str | None = None, limit: int = 50) -> dict[s
 		if project:
 			filters["project"] = project
 
+		fields = [
+			"name",
+			"project",
+			"work_order",
+			"date",
+			"status",
+			"measured_total",
+			"measured_by",
+			"custom_h2q_approval_status",
+			"custom_h2q_task",
+			"custom_h2q_boq_item",
+			"custom_h2q_boq_over_limit",
+			"custom_h2q_submitted_by_user",
+			"modified",
+		]
+		meta = frappe.get_meta("Measurement Book")
+		for extra in (
+			"custom_h2q_entry_kind",
+			"custom_h2q_approval_level",
+			"custom_h2q_geofence_outside",
+		):
+			if meta.has_field(extra):
+				fields.append(extra)
+
 		rows = frappe.get_list(
 			"Measurement Book",
 			filters=filters,
-			fields=[
-				"name",
-				"project",
-				"work_order",
-				"date",
-				"status",
-				"measured_total",
-				"measured_by",
-				"custom_h2q_approval_status",
-				"custom_h2q_task",
-				"custom_h2q_boq_item",
-				"custom_h2q_boq_over_limit",
-				"custom_h2q_submitted_by_user",
-				"modified",
-			],
+			fields=fields,
 			order_by="modified desc",
 			limit_page_length=cint_limit(limit),
 		)
+		from h2q_core.approval_chain import chain_steps
+		from h2q_core.settings import get_settings
+
+		steps = chain_steps(get_settings().get("approval_roles") or [])
 		for row in rows:
 			row["project_name"] = (
 				frappe.db.get_value("Project", row.project, "project_name") if row.project else None
 			)
+			level = cint(row.get("custom_h2q_approval_level") or 0)
+			row["approval_level"] = level
+			row["approval_levels"] = len(steps)
+			row["next_roles"] = steps[level] if level < len(steps) else []
+			row["entry_kind"] = row.get("custom_h2q_entry_kind")
 		return _ok({"items": rows, "count": len(rows)})
 	except Exception:
 		frappe.log_error(title="get_pending_approvals failed", message=frappe.get_traceback())
@@ -895,6 +1029,98 @@ def get_pending_approvals(project: str | None = None, limit: int = 50) -> dict[s
 # ---------------------------------------------------------------------------
 # Resolvers / attachments
 # ---------------------------------------------------------------------------
+
+
+def _ledgers_by_boq(project: str) -> dict[str, dict[str, float]]:
+	"""Sum Measurement Books into QS columns, keyed by BOQ Item."""
+	from h2q_core.field_rules import add_slip, empty_ledger
+
+	meta = frappe.get_meta("Measurement Book")
+	if not meta.has_field("custom_h2q_boq_item"):
+		return {}
+	fields = ["name", "status", "measured_total", "custom_h2q_boq_item"]
+	for extra in ("custom_h2q_entry_kind", "custom_h2q_approval_status"):
+		if meta.has_field(extra):
+			fields.append(extra)
+	rows = frappe.get_all(
+		"Measurement Book",
+		filters={"project": project},
+		fields=fields,
+		limit_page_length=2000,
+	)
+	out: dict[str, dict[str, float]] = {}
+	for row in rows:
+		key = row.get("custom_h2q_boq_item")
+		if not key:
+			continue
+		ledger = out.setdefault(key, empty_ledger())
+		add_slip(
+			ledger,
+			kind=row.get("custom_h2q_entry_kind"),
+			approval=row.get("custom_h2q_approval_status"),
+			status=row.get("status"),
+			qty=flt(row.get("measured_total")),
+		)
+	return out
+
+
+def _ledger_for_boq_item(project: str, boq_item: str | None, *, exclude: str | None = None) -> dict[str, float]:
+	from h2q_core.field_rules import add_slip, empty_ledger
+
+	if not boq_item:
+		return empty_ledger()
+	meta = frappe.get_meta("Measurement Book")
+	if not meta.has_field("custom_h2q_boq_item"):
+		return empty_ledger()
+	fields = ["name", "status", "measured_total", "custom_h2q_boq_item"]
+	for extra in ("custom_h2q_entry_kind", "custom_h2q_approval_status"):
+		if meta.has_field(extra):
+			fields.append(extra)
+	rows = frappe.get_all(
+		"Measurement Book",
+		filters={"project": project, "custom_h2q_boq_item": boq_item},
+		fields=fields,
+		limit_page_length=2000,
+	)
+	ledger = empty_ledger()
+	for row in rows:
+		if exclude and row.get("name") == exclude:
+			continue
+		add_slip(
+			ledger,
+			kind=row.get("custom_h2q_entry_kind"),
+			approval=row.get("custom_h2q_approval_status"),
+			status=row.get("status"),
+			qty=flt(row.get("measured_total")),
+		)
+	return ledger
+
+
+def _assert_final_quantity(doc) -> None:
+	"""Re-check the running total at the last approval, before certify."""
+	from h2q_core.field_rules import check_quantity_slip
+	from h2q_core.settings import get_settings
+
+	if not doc.meta.has_field("custom_h2q_boq_item"):
+		return
+	boq_item = doc.get("custom_h2q_boq_item")
+	if not boq_item:
+		return
+	planned = flt(frappe.db.get_value("BOQ Item", boq_item, "planned_qty"))
+	ledger = _ledger_for_boq_item(doc.project, boq_item, exclude=doc.name)
+	kind = doc.get("custom_h2q_entry_kind") if doc.meta.has_field("custom_h2q_entry_kind") else None
+	verdict = check_quantity_slip(
+		kind=kind,
+		qty=flt(doc.measured_total),
+		contract=planned,
+		executed=ledger["executed"],
+		accepted=ledger["accepted"],
+		policy=get_settings().get("boq_over_limit_policy") or "Warn",
+		has_note=bool((doc.get("remarks") or "").strip()),
+		include_pending_executed=ledger["executed_pending"],
+	)
+	if verdict["action"] == "block":
+		frappe.throw(_(str(verdict["message"])))
 
 
 def _apply_mb_h2q_fields(
@@ -908,10 +1134,16 @@ def _apply_mb_h2q_fields(
 	gps_acc: Any,
 	over_limit: int,
 	user: str,
+	entry_kind: str | None = None,
+	geofence_outside: int = 0,
 ) -> None:
 	meta = frappe.get_meta("Measurement Book")
 	if meta.has_field("custom_h2q_approval_status"):
 		payload["custom_h2q_approval_status"] = "Draft"
+	if meta.has_field("custom_h2q_entry_kind") and entry_kind:
+		payload["custom_h2q_entry_kind"] = entry_kind
+	if meta.has_field("custom_h2q_approval_level"):
+		payload["custom_h2q_approval_level"] = 0
 	if meta.has_field("custom_h2q_task") and task:
 		payload["custom_h2q_task"] = task
 	if meta.has_field("custom_h2q_boq_item") and boq_item_name:
@@ -926,6 +1158,8 @@ def _apply_mb_h2q_fields(
 		payload["custom_h2q_gps_accuracy"] = flt(gps_acc)
 	if meta.has_field("custom_h2q_boq_over_limit"):
 		payload["custom_h2q_boq_over_limit"] = 1 if over_limit else 0
+	if meta.has_field("custom_h2q_geofence_outside"):
+		payload["custom_h2q_geofence_outside"] = 1 if geofence_outside else 0
 	if meta.has_field("custom_h2q_telegram_notified"):
 		payload["custom_h2q_telegram_notified"] = 0
 	if meta.has_field("custom_h2q_submitted_by_user"):
@@ -950,19 +1184,44 @@ def _link_employee_if_possible(doc) -> None:
 
 
 def _mb_approval_payload(doc) -> dict[str, Any]:
+	level = cint(getattr(doc, "custom_h2q_approval_level", 0) or 0)
 	return {
 		"measurement_book": doc.name,
 		"status": doc.status,
 		"approval_status": getattr(doc, "custom_h2q_approval_status", None),
+		"approval_level": level,
+		"entry_kind": getattr(doc, "custom_h2q_entry_kind", None),
 		"project": doc.project,
 		"work_order": doc.work_order,
 		"measured_total": doc.measured_total,
 		"task": getattr(doc, "custom_h2q_task", None),
 		"boq_item": getattr(doc, "custom_h2q_boq_item", None),
 		"boq_over_limit": cint(getattr(doc, "custom_h2q_boq_over_limit", 0)),
+		"geofence_outside": cint(getattr(doc, "custom_h2q_geofence_outside", 0)),
 		"reject_reason": getattr(doc, "custom_h2q_reject_reason", None),
 		"certified_by": doc.get("certified_by"),
 	}
+
+
+def _append_approval_log(doc, action: str, roles: list[str]) -> None:
+	if not doc.meta.has_field("custom_h2q_approval_log"):
+		return
+	raw = doc.custom_h2q_approval_log or "[]"
+	try:
+		log = json.loads(raw) if isinstance(raw, str) else list(raw)
+	except Exception:
+		log = []
+	if not isinstance(log, list):
+		log = []
+	log.append(
+		{
+			"action": action,
+			"user": frappe.session.user,
+			"roles": roles,
+			"level": cint(getattr(doc, "custom_h2q_approval_level", 0) or 0),
+		}
+	)
+	doc.custom_h2q_approval_log = json.dumps(log, ensure_ascii=False)
 
 
 def cint_limit(value: Any, default: int = 50, maximum: int = 200) -> int:
@@ -1093,7 +1352,12 @@ def _match_work_order_line(work_order: str, boq_item: dict[str, Any] | None) -> 
 	)
 
 
-def _attach_r2_images(measurement_book: str, image_urls: list[Any]) -> list[dict[str, str]]:
+def _attach_r2_images(
+	measurement_book: str,
+	image_urls: list[Any],
+	*,
+	doctype: str = "Measurement Book",
+) -> list[dict[str, str]]:
 	attached: list[dict[str, str]] = []
 	for raw in image_urls or []:
 		url = str(raw or "").strip()
@@ -1107,7 +1371,7 @@ def _attach_r2_images(measurement_book: str, image_urls: list[Any]) -> list[dict
 				"doctype": "File",
 				"file_name": file_name,
 				"file_url": url,
-				"attached_to_doctype": "Measurement Book",
+				"attached_to_doctype": doctype,
 				"attached_to_name": measurement_book,
 				"is_private": 0,
 			}

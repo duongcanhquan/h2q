@@ -4,7 +4,7 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": ["role", "can_submit", "can_approve", "sort_order"],
+ "field_order": ["role", "can_submit", "can_approve", "approval_level", "sort_order"],
  "fields": [
   {
    "columns": 3,
@@ -30,6 +30,15 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Can Approve / Reject"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "description": "0 = không vào chuỗi. 1, 2, 3… là thứ tự duyệt. Cùng số thì vai nào cũng duyệt được cấp đó.",
+   "fieldname": "approval_level",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Approval Level"
   },
   {
    "columns": 1,

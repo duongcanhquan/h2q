@@ -1,50 +1,129 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export type MeasurementSyncStatus = "pending" | "syncing" | "synced" | "failed";
+type Table<T extends Record<string, unknown>> = {
+  Row: T;
+  Insert: Partial<T>;
+  Update: Partial<T>;
+  Relationships: [];
+};
 
-export type MeasurementsSyncRow = {
+export type ProfileRow = {
   id: string;
+  email: string | null;
+  full_name: string | null;
+  app_role: string;
   created_at: string;
-  updated_at: string;
-  work_order: string;
-  project: string;
-  measurement_date: string;
-  measured_by: string | null;
-  company: string | null;
-  remarks: string | null;
+};
+
+export type ProjectRecord = {
+  id: string;
+  code: string;
+  name: string;
   status: string;
-  task: string;
+  company: string | null;
+  customer: string | null;
+  expected_start_date: string | null;
+  expected_end_date: string | null;
+  geofence: Json | null;
+  created_at: string;
+};
+
+export type TaskRecord = {
+  id: string;
+  project_id: string;
+  code: string;
+  subject: string;
+  parent_id: string | null;
+  is_group: boolean;
+  status: string;
+};
+
+export type BoqRecord = {
+  id: string;
+  project_id: string;
+  task_id: string | null;
+  code: string;
   description: string;
-  work_order_line: string | null;
-  cost_code_type: string | null;
-  cost_code_group: string | null;
-  cost_code_item: string | null;
-  cost_code_label: string | null;
-  uom: string | null;
-  nos: number | null;
-  length: number | null;
-  breadth: number | null;
-  depth: number | null;
+  unit: string | null;
+  planned_qty: number;
+  rate: number;
+};
+
+export type AppSettingsRow = {
+  id: number;
+  enable_measurement_book: number;
+  enable_site_diary: number;
+  enable_client_ra_billing: number;
+  enable_offline_sync: number;
+  dashboard_progress_source: string;
+  ui_profile: string;
+  allow_mobile_revise_rejected: number;
+  boq_over_limit_policy: string;
+  auto_request_approval_default: number;
+  gps_required: number;
+  geofence_enforcement: string;
+  min_photos_on_submit: number;
+  min_photos_on_approve: number;
+  sync_retry_max: number;
+  pending_ttl_hours: number;
+  telegram_enabled: number;
+  approval_chain_length: number;
+};
+
+export type MeasurementRecord = {
+  id: string;
+  slip_code: string;
+  project_id: string;
+  task_id: string | null;
+  boq_item_id: string | null;
+  created_by: string;
+  measurement_date: string;
   quantity: number;
-  is_deduction: boolean;
+  entry_kind: string;
+  description: string | null;
+  remarks: string | null;
+  uom: string | null;
   rate: number | null;
   billed_amount: number | null;
-  image_url: string | null;
+  work_order: string | null;
   image_urls: string[];
-  is_synced_to_frappe: boolean;
-  boq_item: string | null;
-  frappe_user: string | null;
-  client_request_id: string | null;
-  sync_status: MeasurementSyncStatus;
-  frappe_measurement_book: string | null;
-  last_error: string | null;
-  synced_at: string | null;
   gps_lat: number | null;
   gps_lng: number | null;
   gps_accuracy: number | null;
-  approval_status: string | null;
-  auto_request_approval: boolean;
-  boq_over_limit: boolean;
+  geofence_outside: boolean;
+  over_limit: boolean;
+  approval_status: string;
+  approval_level: number;
+  certified: boolean;
+  reject_reason: string | null;
+  client_request_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DiaryRecord = {
+  id: string;
+  project_id: string;
+  created_by: string;
+  diary_date: string;
+  weather: string | null;
+  site_condition: string | null;
+  safety_status: string | null;
+  work_note: string | null;
+  task_id: string | null;
+  quantity: number | null;
+  labour_count: number | null;
+  equipment_note: string | null;
+  image_urls: string[];
+  gps_lat: number | null;
+  gps_lng: number | null;
+  gps_accuracy: number | null;
+  geofence_outside: boolean;
+  client_request_id: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ProjectProgressRow = {
@@ -59,30 +138,32 @@ export type ProjectProgressRow = {
   updated_at: string;
 };
 
+export type MembershipRow = {
+  project_id: string;
+  user_id: string;
+  member_role: string;
+};
+
 export type Database = {
   public: {
     Tables: {
-      measurements_sync: {
-        Row: MeasurementsSyncRow;
-        Insert: Partial<MeasurementsSyncRow> & {
-          work_order: string;
-          project: string;
-          task: string;
-          description: string;
-          quantity: number;
-        };
-        Update: Partial<MeasurementsSyncRow>;
-        Relationships: [];
-      };
-      project_progress: {
-        Row: ProjectProgressRow;
-        Insert: Partial<ProjectProgressRow> & { project_id: string };
-        Update: Partial<ProjectProgressRow>;
-        Relationships: [];
-      };
+      profiles: Table<ProfileRow>;
+      projects: Table<ProjectRecord>;
+      project_members: Table<MembershipRow>;
+      tasks: Table<TaskRecord>;
+      boq_items: Table<BoqRecord>;
+      app_settings: Table<AppSettingsRow>;
+      measurements: Table<MeasurementRecord>;
+      diaries: Table<DiaryRecord>;
+      project_progress: Table<ProjectProgressRow>;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      decide_measurement: {
+        Args: { p_id: string; p_action: string; p_reason?: string | null };
+        Returns: Json;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

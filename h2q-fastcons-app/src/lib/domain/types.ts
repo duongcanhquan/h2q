@@ -1,9 +1,3 @@
-export type FrappeOk<T> = {
-  message: "success" | string;
-  data?: T;
-  [key: string]: unknown;
-};
-
 export type ProjectRow = {
   name: string;
   project_name: string;
@@ -28,6 +22,11 @@ export type BoqItemRow = {
   planned_qty?: number;
   actual_qty?: number;
   remaining_qty?: number;
+  executed_qty?: number;
+  executed_pending_qty?: number;
+  accepted_qty?: number;
+  accepted_pending_qty?: number;
+  acceptance_room?: number | null;
   rate?: number;
   planned_amount?: number;
   actual_amount?: number;
@@ -56,6 +55,7 @@ export type ProjectWbsData = {
   tasks: TaskRow[];
   boqs: Array<Record<string, unknown>>;
   boq_items: BoqItemRow[];
+  site_geofence?: { ring: Array<[number, number]> } | null;
 };
 
 export type H2qPublicSettings = {
@@ -75,22 +75,7 @@ export type H2qPublicSettings = {
   sync_retry_max: number;
   pending_ttl_hours: number;
   telegram_enabled: number;
-};
-
-export type BoqItemDefaults = {
-  name: string;
-  boq?: string;
-  code?: string;
-  description?: string;
-  unit?: string;
-  planned_qty?: number;
-  actual_qty?: number;
-  remaining_qty?: number;
-  rate?: number;
-  planned_amount?: number;
-  task?: string | null;
-  work_package?: string | null;
-  over_limit?: number;
+  approval_chain_length?: number;
 };
 
 export type SubmitMeasurementPayload = {
@@ -100,40 +85,19 @@ export type SubmitMeasurementPayload = {
   image_urls?: string[];
   image_url?: string;
   work_order?: string;
-  work_order_line?: string;
   boq_item?: string;
   description?: string;
   date?: string;
   remarks?: string;
   uom?: string;
-  nos?: number;
-  length?: number;
-  breadth?: number;
-  depth?: number;
-  is_deduction?: boolean;
   rate?: number;
   billed_amount?: number;
   gps_lat?: number;
   gps_lng?: number;
   gps_accuracy?: number;
   auto_request_approval?: number | boolean;
-};
-
-export type SubmitMeasurementResult = {
-  measurement_book: string;
-  status: string;
-  approval_status?: string;
-  project: string;
-  work_order?: string;
-  task: string;
-  measured_total?: number;
-  boq_over_limit_warn?: number;
-  attached_files?: Array<{ name: string; file_url: string }>;
-};
-
-export type SessionUser = {
-  user: string;
-  full_name?: string;
+  entry_kind?: "thuc_hien" | "nghiem_thu" | string;
+  client_request_id?: string;
 };
 
 export type PendingApprovalRow = {
@@ -150,6 +114,12 @@ export type PendingApprovalRow = {
   custom_h2q_boq_item?: string;
   custom_h2q_boq_over_limit?: number;
   custom_h2q_submitted_by_user?: string;
+  custom_h2q_entry_kind?: string;
+  approval_level?: number;
+  approval_levels?: number;
+  next_roles?: string[];
+  entry_kind?: string | null;
+  custom_h2q_geofence_outside?: number;
   modified?: string;
 };
 
@@ -158,11 +128,43 @@ export type MeasurementApprovalResult = {
   status?: string;
   approval_status?: string;
   project?: string;
-  work_order?: string;
   measured_total?: number;
+  approval_level?: number;
+  approval_levels?: number;
+  awaiting_next_level?: number;
+  entry_kind?: string | null;
+  certified?: number;
+  ledger?: string;
+};
+
+export type SiteDiaryLine = {
   task?: string;
-  boq_item?: string;
-  boq_over_limit?: number;
-  reject_reason?: string | null;
-  certified_by?: string | null;
+  quantity?: number;
+  description?: string;
+  labour_count?: number;
+  equipment_note?: string;
+};
+
+export type SiteDiaryPayload = {
+  project: string;
+  date?: string;
+  weather?: string;
+  site_condition?: string;
+  safety_status?: string;
+  work_note?: string;
+  gps_lat?: number;
+  gps_lng?: number;
+  gps_accuracy?: number;
+  image_urls?: string[];
+  lines: SiteDiaryLine[];
+  client_request_id?: string;
+};
+
+export type SiteDiaryResult = {
+  project: string;
+  date: string;
+  entries: string[];
+  count: number;
+  geofence_outside?: number;
+  geofence_reason?: string;
 };

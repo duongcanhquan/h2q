@@ -1,4 +1,4 @@
-import type { ProjectWbsData } from "@/lib/frappe/types";
+import type { ProjectWbsData } from "@/lib/domain/types";
 
 const PREFIX = "h2q:wbs:";
 

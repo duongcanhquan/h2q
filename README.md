@@ -5,7 +5,7 @@ Monorepo quản lý thi công [h2q.com.vn](https://h2q.com.vn).
 | Thư mục | Vai trò |
 |---------|---------|
 | `h2q_core/` | Frappe app: R2, Telegram, HR seed, H2Q Settings, Measurement APIs, Supabase push |
-| `h2q-fastcons-app/` | Next.js PWA FastCons (Vercel) — dashboard, báo cáo KL, offline Supabase |
+| `h2q-fastcons-app/` | Next.js PWA FastCons (Vercel) — đăng nhập, báo cáo, duyệt trên Supabase |
 | `docs/` | Mapping Fastwork, Settings, INSTALL |
 | `buildsuite_src/` | Reference BuildSuite (không deploy từ monorepo) |
 | `h2q_erp/` | frappe_docker reference |
@@ -16,17 +16,23 @@ Monorepo quản lý thi công [h2q.com.vn](https://h2q.com.vn).
 |-----|----------|
 | [`docs/SETUP_ENV_AND_DATA.md`](docs/SETUP_ENV_AND_DATA.md) | **Biến số, secrets, dữ liệu master, checklist** |
 | [`docs/FEATURES_CATALOG.md`](docs/FEATURES_CATALOG.md) | Catalog tính năng + cách test |
+| [`docs/SPEC_P0_HIEN_TRUONG.md`](docs/SPEC_P0_HIEN_TRUONG.md) | Spec sổ hiện trường: nhật ký, vùng GPS, loại phiếu, duyệt nhiều cấp |
+| [`docs/TAI_LIEU_GIAO_DIEN.md`](docs/TAI_LIEU_GIAO_DIEN.md) | Màn hình, nút, màu, quy trình thao tác |
 | [`docs/INSTALL.md`](docs/INSTALL.md) | Lộ trình cài Frappe → Supabase → Vercel |
 | [`docs/H2Q_SETTINGS.md`](docs/H2Q_SETTINGS.md) | Knob Desk Settings |
 | [`docs/AUDIT_STATUS.md`](docs/AUDIT_STATUS.md) | Audit ship |
 
 ## Dev nhanh (frontend)
 
+App hiện trường chạy bằng GitHub + Vercel + Supabase. Không cần Frappe.
+
 ```bash
 cd h2q-fastcons-app
 cp .env.example .env.local
 npm install && npm run dev
 ```
+
+SQL và dữ liệu mẫu: `h2q-fastcons-app/supabase/README.md`.
 
 ## Remote
 

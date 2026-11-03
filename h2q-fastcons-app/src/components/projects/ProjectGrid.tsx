@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FolderKanban, Radio, RefreshCw } from "lucide-react";
-import { getActiveProjects } from "@/lib/frappe/client";
-import type { ProjectRow } from "@/lib/frappe/types";
+import { getActiveProjects } from "@/lib/api/client";
+import type { ProjectRow } from "@/lib/domain/types";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FrappeApiError } from "@/lib/frappe/errors";
+import { ApiError } from "@/lib/api/errors";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { ProjectProgressRow } from "@/lib/supabase/database.types";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -26,7 +26,7 @@ export function ProjectGrid() {
       const data = await getActiveProjects();
       setProjects(data.projects || []);
     } catch (err) {
-      setError(err instanceof FrappeApiError || err instanceof Error ? err.message : "Lỗi tải dự án");
+      setError(err instanceof ApiError || err instanceof Error ? err.message : "Lỗi tải dự án");
     } finally {
       setLoading(false);
     }
@@ -103,8 +103,8 @@ export function ProjectGrid() {
           <p className="inline-flex items-center gap-1.5 text-xs text-slate-500">
             <Radio className={`size-3.5 ${realtimeOn ? "text-emerald-600" : "text-slate-400"}`} />
             {realtimeOn
-              ? `Realtime ON · ${liveHint} phiếu đang chờ sync`
-              : "Realtime OFF (thiếu Supabase env)"}
+              ? `Đang nối · ${liveHint} phiếu chờ duyệt`
+              : "Chưa nối kênh cập nhật"}
           </p>
         </div>
         <button

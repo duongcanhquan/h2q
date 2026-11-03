@@ -7,7 +7,7 @@ type Props = {
 
 /**
  * Báo cáo hiện trường — `/project/[project_id]/report`
- * (param route name is `id` = Frappe Project name)
+ * Mã công trình nằm trên tham số `id`.
  */
 export default async function ProjectReportPage({ params }: Props) {
   const { id } = await params;

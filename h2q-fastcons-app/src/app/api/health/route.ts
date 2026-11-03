@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
+import { supabaseEnv } from "@/lib/supabase/server";
 
-/** Lightweight probe for Vercel / uptime checks. */
 export async function GET() {
+  const env = supabaseEnv();
   return NextResponse.json({
-    ok: true,
+    ok: env.configured,
     app: "h2q-fastcons",
     time: new Date().toISOString(),
-    frappe_url_configured: Boolean(
-      process.env.FRAPPE_URL || process.env.NEXT_PUBLIC_FRAPPE_URL,
-    ),
-    supabase_configured: Boolean(
-      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    ),
+    supabase_configured: env.configured,
   });
 }

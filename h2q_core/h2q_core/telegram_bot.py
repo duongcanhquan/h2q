@@ -53,9 +53,14 @@ def on_measurement_book_update(doc, method: str | None = None) -> None:
 		changed = True
 		if hasattr(doc, "has_value_changed"):
 			changed = doc.has_value_changed("custom_h2q_approval_status")
+			if doc.meta.has_field("custom_h2q_approval_level") and doc.has_value_changed(
+				"custom_h2q_approval_level"
+			):
+				changed = True
 		already = cint(getattr(doc, "custom_h2q_telegram_notified", 0))
 		if changed and not already:
-			_enqueue_notify(doc.name, kind="pending")
+			level = cint(getattr(doc, "custom_h2q_approval_level", 0) or 0)
+			_enqueue_notify(doc.name, kind="pending", level=level)
 		return
 
 	if getattr(doc, "status", None) != "Certified":
@@ -87,13 +92,13 @@ def enqueue_over_limit_alert(measurement_book: str) -> None:
 	_enqueue_notify(measurement_book, kind="alerts")
 
 
-def _enqueue_notify(measurement_book: str, *, kind: str = "certified") -> None:
+def _enqueue_notify(measurement_book: str, *, kind: str = "certified", level: int = 0) -> None:
 	frappe.enqueue(
 		"h2q_core.telegram_bot.send_measurement_notification",
 		queue="short",
 		timeout=60,
 		enqueue_after_commit=True,
-		job_name=f"telegram_mb::{kind}::{measurement_book}",
+		job_name=f"telegram_mb::{kind}::{measurement_book}::{level}",
 		measurement_book=measurement_book,
 		kind=kind,
 	)

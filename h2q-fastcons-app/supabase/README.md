@@ -1,60 +1,70 @@
-# Supabase for H2Q FastCons (Giai đoạn 3)
+# Supabase cho H2Q FastCons
 
-Frappe/MariaDB = system of record. Supabase/Postgres = offline queue + Realtime UI buffer.
+Supabase là nơi giữ tài khoản, công trình, phiếu khối lượng, nhật ký và ảnh. App Next.js trên Vercel chỉ là giao diện.
 
-## 1. Apply migrations (in order)
+## 1. Project mới
 
-1. `migrations/20261102120000_measurements_sync.sql` (or skip if already applied)
-2. `migrations/20261102140000_measurements_sync_align_buildsuite.sql`
-3. `migrations/20261102150000_h2q_phase2_gps_approval.sql` ← GPS / approval columns
+1. Tạo project trên [supabase.com](https://supabase.com).
+2. **Authentication → Providers → Email**: bật Email.
+3. Tắt **Confirm email** nếu đội hiện trường không mở hộp thư để bấm link xác nhận.
+4. **Project Settings → API**: copy Project URL và `anon` key vào `.env.local` / Vercel.
 
-```bash
-supabase db push
-# or paste each file into SQL Editor
+## 2. Chạy SQL
+
+Với project mới, mở **SQL Editor** và chạy đúng một file:
+
+`migrations/20261103180000_standalone_app.sql`
+
+File này tạo bảng, quyền theo dòng (RLS), bucket ảnh `site-photos`, và trigger: user đầu tiên là `admin`.
+
+Các file migration cũ (`measurements_sync`) là hàng đợi đẩy sang Frappe. App hiện không dùng chúng.
+
+## 3. Dữ liệu tối thiểu
+
+Sau khi tạo user bằng Authentication → Users → Add user (hoặc đăng ký), chạy trong SQL Editor. Đổi email cho đúng.
+
+```sql
+insert into public.projects (code, name, status)
+values ('CT-01', 'Công trình mẫu', 'Open');
+
+insert into public.project_members (project_id, user_id, member_role)
+select p.id, pr.id, 'admin'
+from public.projects p
+join public.profiles pr on pr.email = 'duongcanhquan@gmail.com'
+where p.code = 'CT-01';
+
+insert into public.tasks (project_id, code, subject)
+select id, 'HM-01', 'Móng' from public.projects where code = 'CT-01';
+
+insert into public.boq_items (project_id, task_id, code, description, unit, planned_qty, rate)
+select p.id, t.id, 'BT-01', 'Bê tông móng', 'm3', 100, 1500000
+from public.projects p
+join public.tasks t on t.project_id = p.id and t.code = 'HM-01'
+where p.code = 'CT-01';
 ```
 
-## 2. Env
+Admin đăng nhập rồi vào biểu tượng người dùng để tạo, sửa, xóa tài khoản và phân công công trình. Nếu đã chạy file SQL lớn trước khi có màn này, chạy thêm `migrations/20261103220000_admin_user_management.sql`.
 
-**Next.js (Vercel / `.env.local`):**
+Nếu tài khoản `duongcanhquan@gmail.com` được tạo trước khi chạy SQL, gán lại quyền admin:
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-SYNC_WEBHOOK_SECRET=...
-FRAPPE_API_KEY=...
-FRAPPE_API_SECRET=...
+```sql
+insert into public.profiles (id, email, full_name, app_role)
+select id, email, 'Admin', 'admin'
+from auth.users
+where email = 'duongcanhquan@gmail.com'
+on conflict (id) do update set app_role = 'admin', email = excluded.email;
 ```
 
-**Frappe `site_config.json` (chiều Frappe → Supabase):**
+Vùng GPS của công trình, nếu cần, là JSON `{"ring":[[vĩ độ, kinh độ], ...]}` với ít nhất 3 điểm, ghi vào `projects.geofence`.
 
-```json
-{
-  "supabase_url": "https://xxxx.supabase.co",
-  "supabase_service_role_key": "eyJ..."
-}
-```
-
-## 3. Webhook (Supabase → Next → Frappe)
-
-Dashboard → Database → Webhooks:
-
-- Table: `measurements_sync` · Events: INSERT
-- URL: `https://<app>/api/sync/on-measurement`
-- Header: `x-sync-secret: <SYNC_WEBHOOK_SECRET>`
-
-Cron (optional): `GET /api/sync/flush-measurements` + same header.
-
-## Flow 2 chiều
+## 4. Biến trên Vercel
 
 ```
-PWA ──insert──► measurements_sync (pending)
-                    │
-                    ├─ webhook/flush ──► h2q_core.api.submit_measurement ──► MB Draft(+Pending)
-                    │
-Frappe MB update ──► h2q_core.sync.supabase_push ──PATCH──► measurements_sync
-                    │
-project_progress trigger ──Realtime──► Dashboard
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY
 ```
 
-H2Q Settings `enable_offline_sync` tắt → Frappe không push; PWA vẫn có thể ghi local nếu anon key còn.
+Khóa publishable được phép có mặt trên trình duyệt. `SUPABASE_SECRET_KEY` chỉ để trên Vercel, không thêm tiền tố `NEXT_PUBLIC_`. Đó là Secret key trong Supabase → Project Settings → API Keys. Admin cần khóa này để tạo và xóa tài khoản.
+
+Telegram tuỳ chọn, chỉ trên server: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`. Bật gửi tin bằng `update public.app_settings set telegram_enabled = 1 where id = 1`.

@@ -24,7 +24,9 @@ Secret (`telegram_bot_token`, R2 keys) vẫn chỉ trong `site_config.json`.
 
 ## Feature flags (sẵn sàng UI / giai đoạn sau)
 
-`enable_site_diary`, `enable_client_ra_billing`, `enable_offline_sync`, `ui_profile`, `allow_mobile_revise_rejected`, `geofence_enforcement` (policy lưu; enforce polygon = follow-up), `sync_retry_max`, `pending_ttl_hours`, `workforce_mode`.
+`enable_site_diary` (PWA `/project/[id]/diary` gọi `submit_site_diary` khi bật), `enable_client_ra_billing`, `enable_offline_sync`, `ui_profile`, `allow_mobile_revise_rejected`, `geofence_enforcement` (Off / Warn / Block, có polygon trên Project), `sync_retry_max`, `pending_ttl_hours`, `workforce_mode`.
+
+`approval_roles.approval_level`: `0` giữ duyệt một cấp. Gán `1`, `2`, `3` để thành chuỗi. Cùng số thì vai nào trong cấp đó cũng duyệt được. System Manager luôn duyệt được cấp hiện tại. Certify chỉ chạy ở cấp cuối.
 
 ---
 

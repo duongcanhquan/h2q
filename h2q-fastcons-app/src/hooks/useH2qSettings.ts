@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getH2qSettings } from "@/lib/frappe/client";
-import type { H2qPublicSettings } from "@/lib/frappe/types";
+import { getH2qSettings } from "@/lib/api/client";
+import type { H2qPublicSettings } from "@/lib/domain/types";
 
 const CACHE_KEY = "h2q_settings_public_v1";
 
 const FALLBACK: H2qPublicSettings = {
   enable_measurement_book: 1,
-  enable_site_diary: 0,
+  enable_site_diary: 1,
   enable_client_ra_billing: 0,
   enable_offline_sync: 1,
   dashboard_progress_source: "BOQ Qty",
   ui_profile: "Field Gloves",
   allow_mobile_revise_rejected: 1,
   boq_over_limit_policy: "Warn",
-  auto_request_approval_default: 0,
+  auto_request_approval_default: 1,
   gps_required: 0,
   geofence_enforcement: "Off",
   min_photos_on_submit: 0,

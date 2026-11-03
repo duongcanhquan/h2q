@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getProjectWbs } from "@/lib/frappe/client";
+import { getProjectWbs } from "@/lib/api/client";
 import { cacheProjectWbs, readCachedProjectWbs } from "@/lib/offline/wbs-cache";
-import type { TaskRow } from "@/lib/frappe/types";
-import { FrappeApiError } from "@/lib/frappe/errors";
+import type { TaskRow } from "@/lib/domain/types";
+import { ApiError } from "@/lib/api/errors";
 import { drainLocalMeasurementQueue } from "@/lib/supabase/measurements";
 
 export function useProjectWbs(projectId: string) {
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [projectName, setProjectName] = useState(projectId);
+  const [geofence, setGeofence] = useState<Array<[number, number]> | null>(null);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
@@ -23,6 +24,7 @@ export function useProjectWbs(projectId: string) {
       cacheProjectWbs(projectId, data);
       setProjectName(data.project_name || projectId);
       setTasks((data.tasks || []).filter((t) => !t.is_group));
+      setGeofence(data.site_geofence?.ring?.length ? data.site_geofence.ring : null);
       void drainLocalMeasurementQueue();
     } catch (err) {
       const cached = readCachedProjectWbs(projectId);
@@ -30,12 +32,9 @@ export function useProjectWbs(projectId: string) {
         setOffline(true);
         setProjectName(cached.project_name || projectId);
         setTasks((cached.tasks || []).filter((t) => !t.is_group));
+        setGeofence(cached.site_geofence?.ring?.length ? cached.site_geofence.ring : null);
       } else {
-        setError(
-          err instanceof FrappeApiError || err instanceof Error
-            ? err.message
-            : "Không tải được WBS từ get_project_wbs",
-        );
+        setError(err instanceof ApiError || err instanceof Error ? err.message : "Không tải được hạng mục");
       }
     } finally {
       setLoading(false);
@@ -57,5 +56,5 @@ export function useProjectWbs(projectId: string) {
     };
   }, [reload]);
 
-  return { tasks, projectName, loading, offline, error, reload };
+  return { tasks, projectName, geofence, loading, offline, error, reload };
 }

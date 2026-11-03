@@ -27,6 +27,7 @@ delete_file_data_content = "h2q_core.storage.r2_file.delete_file_data_content"
 # ---------------------------------------------------------------------------
 doc_events = {
 	"Measurement Book": {
+		"validate": "h2q_core.measurement_book_events.validate",
 		"on_update": "h2q_core.measurement_book_events.on_update",
 		"on_submit": "h2q_core.measurement_book_events.on_submit",
 	},

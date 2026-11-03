@@ -7,7 +7,7 @@ export default function DashboardPage() {
       <section className="space-y-1 pb-3">
         <h2 className="text-xl font-bold text-slate-900">Công trình đang thi công</h2>
         <p className="text-sm text-slate-600">
-          % hoàn thành lấy từ H2Q Settings (BOQ / Project). Chạm dự án → báo cáo khối lượng.
+          Mỗi công trình có nhật ký ngày và phiếu khối lượng. Phần trăm theo cách công ty đang tính.
         </p>
       </section>
       <ProjectGrid />

@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SID_COOKIE } from "@/lib/frappe/constants";
+import { createSupabaseProxy, supabaseEnv } from "@/lib/supabase/server";
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/sync") || // webhook/cron uses x-sync-secret, not sid
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/icons") ||
@@ -16,15 +15,45 @@ export function proxy(request: NextRequest) {
     pathname === "/sw.js" ||
     pathname.startsWith("/workbox");
 
-  if (isPublic) return NextResponse.next();
-
-  const sid = request.cookies.get(SID_COOKIE)?.value;
-  if (!sid) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", pathname === "/" ? "/dashboard" : pathname);
-    return NextResponse.redirect(login);
+  const response = NextResponse.next({ request });
+  const env = supabaseEnv();
+  if (!env.configured) {
+    if (isPublic) return response;
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ message: "Chưa cấu hình Supabase." }, { status: 503 });
+    }
+    return redirectToLogin(request);
   }
-  return NextResponse.next();
+
+  const supabase = createSupabaseProxy(request, response);
+  let userId = "";
+  try {
+    const { data } = await supabase.auth.getUser();
+    userId = data.user?.id || "";
+  } catch {
+    userId = "";
+  }
+  if (!userId && !isPublic) {
+    if (pathname.startsWith("/api/")) {
+      const denied = NextResponse.json({ message: "Phiên đăng nhập đã hết." }, { status: 401 });
+      response.cookies.getAll().forEach((cookie) => {
+        denied.cookies.set(cookie);
+      });
+      return denied;
+    }
+    const redirect = redirectToLogin(request, pathname);
+    response.cookies.getAll().forEach((cookie) => {
+      redirect.cookies.set(cookie);
+    });
+    return redirect;
+  }
+  return response;
+}
+
+function redirectToLogin(request: NextRequest, pathname = request.nextUrl.pathname) {
+  const login = new URL("/login", request.url);
+  login.searchParams.set("next", pathname === "/" ? "/dashboard" : pathname);
+  return NextResponse.redirect(login);
 }
 
 export const config = {
