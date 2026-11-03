@@ -9,12 +9,15 @@ const LINKS = [
   ["/packages", "Gói việc"],
   ["/contracts", "Giao thầu"],
   ["/changes", "Phát sinh"],
+  ["/supply", "Vật tư"],
+  ["/quotes", "Báo giá"],
+  ["/audit", "Kiểm toán"],
 ] as const;
 
 export function OfficeLinks() {
   const pathname = usePathname();
   return (
-    <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+    <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
       {LINKS.map(([href, label]) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (

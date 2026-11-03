@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ClipboardCheck, FileSpreadsheet, FolderKanban, GitPullRequest, HardHat, LayoutDashboard, LogOut, Package, Users } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, FolderKanban, GitPullRequest, HardHat, LayoutDashboard, LogOut, Package, ScrollText, ShieldCheck, Truck, Users } from "lucide-react";
 import { logout } from "@/lib/api/client";
 import { useEffect, useState } from "react";
 
@@ -13,6 +13,9 @@ const NAV = [
   { href: "/packages", label: "Gói việc", icon: Package, mobile: false },
   { href: "/contracts", label: "Giao thầu", icon: GitPullRequest, mobile: false },
   { href: "/changes", label: "Phát sinh", icon: GitPullRequest, mobile: false },
+  { href: "/supply", label: "Vật tư", icon: Truck, mobile: false },
+  { href: "/quotes", label: "Báo giá", icon: ScrollText, mobile: false },
+  { href: "/audit", label: "Kiểm toán", icon: ShieldCheck, mobile: false },
   { href: "/approvals", label: "Duyệt", icon: ClipboardCheck, mobile: true },
 ] as const;
 
@@ -61,18 +64,15 @@ export function AppShell({
   const mobileItems = items.filter((item) => item.mobile);
 
   return (
-    <div className="min-h-full lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
-      <aside className="hidden border-r border-slate-200 bg-white lg:flex lg:min-h-full lg:flex-col">
-        <div className="flex items-center gap-3 px-5 py-5">
-          <span className="inline-flex size-10 items-center justify-center rounded-xl bg-amber-500 text-white">
+    <div className="min-h-full lg:grid lg:h-full lg:grid-cols-[232px_minmax(0,1fr)]">
+      <aside className="hidden border-r border-white/50 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <span className="inline-flex size-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-none">
             <HardHat className="size-5" />
           </span>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">H2Q</p>
-            <p className="font-semibold text-slate-900">FastCons</p>
-          </div>
+          <p className="font-semibold text-stone-900">H2Q FastCons</p>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 px-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3">
           {items.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
@@ -80,8 +80,8 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium ${
-                  active ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 font-medium ${
+                  active ? "bg-stone-900 text-white shadow-none" : "text-stone-800 hover:bg-white/50"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
@@ -95,16 +95,16 @@ export function AppShell({
           type="button"
           onClick={onLogout}
           disabled={busy}
-          className="m-3 flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          className="m-3 flex min-h-11 items-center gap-3 rounded-xl px-3 font-medium text-stone-800 shadow-none hover:bg-white/50 disabled:opacity-50"
         >
           <LogOut className="size-4" />
           Đăng xuất
         </button>
       </aside>
 
-      <div className="flex min-h-full flex-col bg-[var(--background)]">
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-[#f7f4ef]/95 backdrop-blur">
-          <div className="flex items-center gap-3 px-4 py-3 lg:px-8">
+      <div className="flex min-h-full min-w-0 flex-col">
+        <header className="sticky top-0 z-20 border-b border-white/50">
+          <div className="flex items-center gap-3 px-4 py-3 lg:px-6">
             {backHref ? (
               <Link
                 href={backHref}
@@ -117,10 +117,7 @@ export function AppShell({
                 <HardHat className="size-5" aria-hidden />
               </span>
             )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium uppercase tracking-[0.14em] text-amber-700">H2Q FastCons</p>
-              <h1 className="truncate text-lg font-semibold text-slate-900">{title}</h1>
-            </div>
+            <h1 className="min-w-0 flex-1 truncate font-semibold text-stone-900">{title}</h1>
             <button
               type="button"
               onClick={onLogout}
@@ -132,10 +129,10 @@ export function AppShell({
             </button>
           </div>
         </header>
-        <main className={`flex-1 px-4 py-4 pb-24 lg:px-8 lg:py-6 lg:pb-10 ${wide ? "" : "lg:mx-auto lg:w-full lg:max-w-3xl"}`}>
+        <main data-wide={wide ? "yes" : "no"} className="w-full flex-1 px-4 py-4 pb-24 lg:px-6 lg:py-5 lg:pb-8">
           {children}
         </main>
-        <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-slate-200 bg-white lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-white/60 lg:hidden">
           {mobileItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
@@ -143,8 +140,8 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
-                  active ? "text-amber-700" : "text-slate-500"
+                className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 font-medium ${
+                  active ? "text-amber-800" : "text-stone-600"
                 }`}
               >
                 <Icon className="size-5" />

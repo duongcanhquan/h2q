@@ -195,6 +195,57 @@ export type WorkOrderLineRow = {
   rate: number;
 };
 
+export type SupplierRow = {
+  id: string;
+  name: string;
+  tax_code: string | null;
+  phone: string | null;
+  trade: string | null;
+  created_at: string;
+};
+
+export type MaterialPriceRow = {
+  id: string;
+  supplier_id: string | null;
+  name: string;
+  unit: string | null;
+  price: number;
+  effective_on: string;
+  created_at: string;
+};
+
+export type MaterialUseRow = {
+  id: string;
+  project_id: string;
+  material_price_id: string;
+  planned_qty: number;
+  used_qty: number;
+  created_at: string;
+};
+
+export type QuotationRow = {
+  id: string;
+  project_id: string;
+  supplier_id: string | null;
+  code: string;
+  title: string;
+  amount: number;
+  status: string;
+  score: number | null;
+  review: string | null;
+  created_at: string;
+};
+
+export type AuditLogRow = {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  summary: string;
+  created_at: string;
+};
+
 export type ScopeChangeRow = {
   id: string;
   project_id: string;
@@ -224,6 +275,11 @@ export type Database = {
       work_orders: Table<WorkOrderRow>;
       work_order_lines: Table<WorkOrderLineRow>;
       scope_changes: Table<ScopeChangeRow>;
+      suppliers: Table<SupplierRow>;
+      material_prices: Table<MaterialPriceRow>;
+      material_uses: Table<MaterialUseRow>;
+      quotations: Table<QuotationRow>;
+      audit_log: Table<AuditLogRow>;
     };
     Views: Record<string, never>;
     Functions: {
