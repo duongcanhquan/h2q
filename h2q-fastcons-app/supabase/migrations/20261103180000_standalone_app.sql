@@ -401,8 +401,9 @@ grant select on public.profiles, public.projects, public.project_members, public
   to authenticated;
 grant insert on public.projects, public.project_members, public.tasks, public.boq_items,
   public.measurements, public.diaries to authenticated;
-grant update on public.projects, public.app_settings, public.diaries, public.profiles, public.project_members to authenticated;
-grant delete on public.project_members to authenticated;
+grant update on public.projects, public.app_settings, public.diaries, public.profiles, public.project_members,
+  public.tasks, public.boq_items to authenticated;
+grant delete on public.project_members, public.tasks, public.boq_items to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.projects enable row level security;
@@ -490,6 +491,28 @@ drop policy if exists boq_write on public.boq_items;
 create policy boq_write on public.boq_items
   for insert to authenticated
   with check (public.is_admin());
+
+drop policy if exists tasks_update on public.tasks;
+create policy tasks_update on public.tasks
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists tasks_delete on public.tasks;
+create policy tasks_delete on public.tasks
+  for delete to authenticated
+  using (public.is_admin());
+
+drop policy if exists boq_update on public.boq_items;
+create policy boq_update on public.boq_items
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists boq_delete on public.boq_items;
+create policy boq_delete on public.boq_items
+  for delete to authenticated
+  using (public.is_admin());
 
 drop policy if exists settings_select on public.app_settings;
 create policy settings_select on public.app_settings

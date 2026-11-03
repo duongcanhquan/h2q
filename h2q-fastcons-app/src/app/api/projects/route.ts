@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import { addToLedger, emptyLedger, jsonError, loadSettings, requireUser } from "@/lib/data/field";
+import { requireAdmin } from "@/lib/data/people";
 import type { BoqRecord, MeasurementRecord, ProjectRecord } from "@/lib/supabase/database.types";
 import type { ProjectRow } from "@/lib/domain/types";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireUser();
   if (!gate.user || !gate.supabase) return gate.response;
 
   const { supabase } = gate;
-  const { data: projects, error } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("status", "Open")
-    .order("name");
+  const all = new URL(request.url).searchParams.get("all") === "1";
+  let query = supabase.from("projects").select("*").order("name");
+  if (!all) query = query.eq("status", "Open");
+  const { data: projects, error } = await query;
   if (error) return jsonError(error.message, 400);
 
   const rows = (projects || []) as ProjectRecord[];
@@ -81,4 +81,43 @@ export async function GET() {
   });
 
   return NextResponse.json({ projects: payload, count: payload.length });
+}
+
+function text(value: unknown) {
+  const trimmed = String(value || "").trim();
+  return trimmed || null;
+}
+
+export async function POST(request: Request) {
+  const gate = await requireAdmin();
+  if (!gate.user || !gate.supabase) return gate.response;
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const code = String(body?.code || "").trim();
+  const name = String(body?.name || "").trim();
+  if (!code || !name) return jsonError("Nhập mã và tên công trình.", 400);
+
+  const inserted = await gate.supabase
+    .from("projects")
+    .insert({
+      code,
+      name,
+      status: text(body?.status) || "Open",
+      company: text(body?.company),
+      customer: text(body?.customer),
+      expected_start_date: text(body?.expected_start_date),
+      expected_end_date: text(body?.expected_end_date),
+    })
+    .select("id, code")
+    .single();
+  if (inserted.error || !inserted.data) {
+    const message = inserted.error?.message.includes("duplicate") ? "Mã công trình đã tồn tại." : inserted.error?.message || "Không tạo được công trình.";
+    return jsonError(message, 400);
+  }
+  const saved = inserted.data as { id: string; code: string };
+  await gate.supabase.from("project_members").insert({
+    project_id: saved.id,
+    user_id: gate.user.id,
+    member_role: "admin",
+  });
+  return NextResponse.json({ code: saved.code });
 }

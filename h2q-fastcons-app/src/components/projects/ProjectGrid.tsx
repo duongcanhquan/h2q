@@ -131,7 +131,7 @@ export function ProjectGrid() {
       ) : null}
 
       {!loading && projects.length > 0 ? (
-        <ul className="space-y-3">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((p) => (
             <li key={p.name}>
               <ProjectCard project={p} live={progressById[p.name]} />

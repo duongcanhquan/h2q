@@ -48,6 +48,7 @@ export async function GET(_request: Request, { params }: Params) {
   const boqRows = ((boqRes.data || []) as BoqRecord[]).map((item) => toBoq(item, slips));
   const tasks = ((taskRes.data || []) as TaskRecord[]).map<TaskRow>((task) => ({
     name: task.id,
+    code: task.code,
     subject: task.subject,
     parent_task: task.parent_id,
     status: task.status,

@@ -41,6 +41,7 @@ export type BoqItemRow = {
 
 export type TaskRow = {
   name: string;
+  code?: string;
   subject: string;
   parent_task?: string | null;
   status?: string;

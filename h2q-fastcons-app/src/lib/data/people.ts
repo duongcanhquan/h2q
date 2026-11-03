@@ -18,7 +18,7 @@ export async function requireAdmin() {
     return { supabase: null, user: null, response: jsonError(error.message, 400) };
   }
   if ((data as Pick<ProfileRow, "app_role"> | null)?.app_role !== "admin") {
-    return { supabase: null, user: null, response: jsonError("Chỉ admin mới quản lý người dùng.", 403) };
+    return { supabase: null, user: null, response: jsonError("Chỉ admin mới được thao tác này.", 403) };
   }
   return gate;
 }

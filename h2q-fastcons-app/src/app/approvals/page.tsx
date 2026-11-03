@@ -3,7 +3,7 @@ import { PendingApprovalsList } from "@/components/approvals/PendingApprovalsLis
 
 export default function ApprovalsPage() {
   return (
-    <AppShell title="Chờ duyệt" backHref="/dashboard">
+    <AppShell title="Chờ duyệt" backHref="/dashboard" wide>
       <section className="space-y-1 pb-3">
         <h2 className="text-xl font-bold text-slate-900">Phiếu chờ duyệt</h2>
         <p className="text-sm text-slate-600">
