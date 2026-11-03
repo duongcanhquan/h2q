@@ -76,7 +76,7 @@ export async function POST(request: Request) {
   const qty = Number(body.qty || 0) || 0;
   const rate = Number(body.rate || 0) || 0;
   if (description && (qty || rate)) {
-    await gate.supabase.from("work_order_lines").insert({
+    const line = await gate.supabase.from("work_order_lines").insert({
       work_order_id: orderId,
       description,
       unit: String(body.unit || "").trim() || null,
@@ -84,6 +84,10 @@ export async function POST(request: Request) {
       rate,
       boq_item_id: body.boq_item_id ? String(body.boq_item_id) : null,
     });
+    if (line.error) {
+      await gate.supabase.from("work_orders").delete().eq("id", orderId);
+      return jsonError(line.error.message, 400);
+    }
   }
   return NextResponse.json({ id: orderId });
 }

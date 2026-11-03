@@ -13,6 +13,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["sharp"],
   // Keep Turbopack CSS pipeline from create-next-app template
   turbopack: {
     rules: {

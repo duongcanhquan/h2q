@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       .eq("project_id", project.id)
       .maybeSingle();
     if (taskRes.error) return jsonError(taskRes.error.message, 400);
-    if (!taskRes.data) taskId = null;
+    if (!taskRes.data) return jsonError("Hạng mục không thuộc công trình này.", 400);
   }
 
   const imageUrls = (body.image_urls || []).map((url) => url.trim()).filter(Boolean);
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
   let lookup = supabase
     .from("diaries")
-    .select("id")
+    .select("id, image_urls")
     .eq("project_id", project.id)
     .eq("diary_date", date)
     .eq("created_by", user.id);
@@ -104,9 +104,12 @@ export async function POST(request: Request) {
   if (prior.error) return jsonError(prior.error.message, 400);
 
   if (prior.data) {
-    const id = (prior.data as Pick<DiaryRecord, "id">).id;
+    const existing = prior.data as Pick<DiaryRecord, "id" | "image_urls">;
+    const id = existing.id;
+    fields.image_urls = [...new Set([...(existing.image_urls || []), ...imageUrls])];
     const updated = await supabase.from("diaries").update(fields).eq("id", id).select("id").single();
     if (updated.error) return jsonError(updated.error.message, 400);
+    await linkDiaryPhotos(supabase, project.id, taskId, date, user.id, imageUrls);
     return NextResponse.json({
       project: project.code,
       date,
@@ -130,6 +133,7 @@ export async function POST(request: Request) {
     .single();
   if (inserted.error) return jsonError(inserted.error.message, 400);
   const id = (inserted.data as Pick<DiaryRecord, "id">).id;
+  await linkDiaryPhotos(supabase, project.id, taskId, date, user.id, imageUrls);
   return NextResponse.json({
     project: project.code,
     date,
@@ -138,4 +142,34 @@ export async function POST(request: Request) {
     geofence_outside: fence.outside,
     geofence_reason: fence.reason,
   });
+}
+
+async function linkDiaryPhotos(
+  supabase: NonNullable<Awaited<ReturnType<typeof requireUser>>["supabase"]>,
+  projectId: string,
+  taskId: string | null,
+  date: string,
+  userId: string,
+  urls: string[],
+) {
+  if (!urls.length) return;
+  const existing = await supabase.from("documents").select("file_url").eq("project_id", projectId).in("file_url", urls);
+  if (existing.error) return;
+  const have = new Set(((existing.data || []) as { file_url: string }[]).map((row) => row.file_url));
+  const rows = urls.filter((url) => !have.has(url)).map((url) => ({
+    project_id: projectId,
+    task_id: taskId,
+    kind: "tien_do" as const,
+    title: `Nhật ký ${date}`,
+    file_url: url,
+    storage_key: url,
+    taken_on: date,
+    note: "Ảnh nhật ký thi công",
+    created_by: userId,
+  }));
+  if (!rows.length) return;
+  const inserted = await supabase.from("documents").insert(rows);
+  if (inserted.error && /created_by|schema cache/i.test(inserted.error.message)) {
+    await supabase.from("documents").insert(rows.map(({ created_by: _by, ...rest }) => rest));
+  }
 }

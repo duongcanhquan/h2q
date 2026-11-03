@@ -7,11 +7,14 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 
 type Project = { id: string; code: string; name: string };
 type Row = { id: string; code: string; name: string; budget: number; project_code: string; project_name: string; planned_amount: number };
+type Item = { id: string; code: string; description: string; project_code: string; work_package_id: string | null };
 const field = "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
 
 export function PackageBoard() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [attach, setAttach] = useState({ package_id: "", item_id: "" });
   const [projects, setProjects] = useState<Project[]>([]);
   const [admin, setAdmin] = useState(false);
   const [error, setError] = useState("");
@@ -23,10 +26,11 @@ export function PackageBoard() {
       fetch("/api/registers/packages", { credentials: "include" }),
       fetch("/api/auth/session", { credentials: "include" }),
     ]);
-    const data = (await res.json().catch(() => ({}))) as { message?: string; rows?: Row[]; projects?: Project[] };
+    const data = (await res.json().catch(() => ({}))) as { message?: string; rows?: Row[]; projects?: Project[]; items?: Item[] };
     if (!res.ok) throw new ApiError(data.message || "Không tải được gói việc.", res.status);
     const who = (await session.json().catch(() => ({}))) as { app_role?: string };
     setRows(data.rows || []);
+    setItems(data.items || []);
     setProjects(data.projects || []);
     setAdmin(who.app_role === "admin");
   }
@@ -37,6 +41,7 @@ export function PackageBoard() {
 
   async function onCreate(event: FormEvent) {
     event.preventDefault();
+    setError("");
     const res = await fetch("/api/registers/packages", {
       method: "POST",
       credentials: "include",
@@ -65,6 +70,34 @@ export function PackageBoard() {
           <input className={field} placeholder="Tên gói" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input className={field} placeholder="Ngân sách" inputMode="decimal" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
           <button className="min-h-11 rounded-xl bg-slate-900 text-sm font-semibold text-white">Tạo gói</button>
+        </form>
+      ) : null}
+      {admin ? (
+        <form className="grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 md:grid-cols-3" onSubmit={async (event) => {
+          event.preventDefault();
+          setError("");
+          const res = await fetch("/api/registers/packages", {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: attach.package_id, item_id: attach.item_id }),
+          });
+          const data = (await res.json().catch(() => ({}))) as { message?: string };
+          if (!res.ok) return setError(data.message || "Không gắn được đầu việc.");
+          setAttach({ package_id: "", item_id: "" });
+          await reload();
+        }}>
+          <select className={field} required value={attach.package_id} onChange={(e) => setAttach({ package_id: e.target.value, item_id: "" })}>
+            <option value="">Gói việc</option>
+            {rows.map((row) => <option key={row.id} value={row.id}>{row.project_code} · {row.code}</option>)}
+          </select>
+          <select className={field} required value={attach.item_id} onChange={(e) => setAttach({ ...attach, item_id: e.target.value })}>
+            <option value="">Đầu việc cùng công trình</option>
+            {items.filter((item) => item.project_code === rows.find((row) => row.id === attach.package_id)?.project_code).map((item) => (
+              <option key={item.id} value={item.id}>{item.code} · {item.description}{item.work_package_id ? " · đã gắn" : ""}</option>
+            ))}
+          </select>
+          <button className="min-h-11 rounded-xl bg-slate-900 text-sm font-semibold text-white">Gắn vào gói</button>
         </form>
       ) : null}
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">

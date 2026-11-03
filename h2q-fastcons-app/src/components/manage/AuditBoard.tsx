@@ -30,7 +30,7 @@ export function AuditBoard() {
     <div className="space-y-4">
       {error ? <ErrorBanner message={error} /> : null}
       <p>Mỗi lần thêm, sửa hoặc xóa công trình, dự toán, giao thầu, phát sinh, giá, vật tư và báo giá đều ghi một dòng ở đây. Chỉ admin xem được.</p>
-      <div className="overflow-x-auto rounded-2xl">
+      <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
         <table className="min-w-full">
           <thead>
             <tr>
@@ -41,7 +41,7 @@ export function AuditBoard() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-t border-white/50">
+              <tr key={row.id} className="border-t border-slate-100">
                 <td className="px-3 py-3">{new Date(row.created_at).toLocaleString("vi-VN")}</td>
                 <td className="px-3 py-3">{ACTION[row.action] || row.action}</td>
                 <td className="px-3 py-3">{row.entity_label}</td>

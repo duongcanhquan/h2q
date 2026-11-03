@@ -9,6 +9,7 @@ type Project = { id: string; code: string; name: string };
 type Row = { id: string; code: string; title: string; reason: string | null; amount: number; status: string; project_code: string; project_name: string };
 const field = "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
+const STATUS: Record<string, string> = { Draft: "Nháp", Submitted: "Đã trình", Approved: "Đã duyệt", Rejected: "Từ chối" };
 
 export function ChangeBoard() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -37,6 +38,7 @@ export function ChangeBoard() {
 
   async function onCreate(event: FormEvent) {
     event.preventDefault();
+    setError("");
     const res = await fetch("/api/registers/changes", {
       method: "POST",
       credentials: "include",
@@ -50,6 +52,7 @@ export function ChangeBoard() {
   }
 
   async function setStatus(id: string, status: string) {
+    setError("");
     const res = await fetch("/api/registers/changes", {
       method: "PATCH",
       credentials: "include",
@@ -99,12 +102,15 @@ export function ChangeBoard() {
                 <td className="px-3 py-3">{row.reason || "—"}</td>
                 <td className="px-3 py-3 text-right">{money(Number(row.amount))}</td>
                 <td className="px-3 py-3">
-                  {row.status}
-                  {admin && row.status !== "Approved" ? (
-                    <button type="button" className="ml-3 font-semibold text-amber-700" onClick={() => void setStatus(row.id, "Approved")}>Duyệt</button>
-                  ) : null}
+                  {STATUS[row.status] || row.status}
                   {admin && row.status === "Draft" ? (
-                    <button type="button" className="ml-3 font-semibold text-red-700" onClick={() => void setStatus(row.id, "Rejected")}>Từ chối</button>
+                    <button type="button" className="ml-3 font-semibold text-amber-700" onClick={() => void setStatus(row.id, "Submitted")}>Trình</button>
+                  ) : null}
+                  {admin && row.status === "Submitted" ? (
+                    <>
+                      <button type="button" className="ml-3 font-semibold text-amber-700" onClick={() => void setStatus(row.id, "Approved")}>Duyệt</button>
+                      <button type="button" className="ml-3 font-semibold text-red-700" onClick={() => void setStatus(row.id, "Rejected")}>Từ chối</button>
+                    </>
                   ) : null}
                 </td>
               </tr>

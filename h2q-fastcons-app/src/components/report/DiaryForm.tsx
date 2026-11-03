@@ -11,6 +11,7 @@ import { useProjectWbs } from "@/hooks/useProjectWbs";
 import { useH2qSettings } from "@/hooks/useH2qSettings";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { evaluateGeofence } from "@/lib/geo/geofence";
+import { localDateInput } from "@/lib/date/local";
 import { drainSiteDiaryQueue, enqueueSiteDiary } from "@/lib/offline/diary-queue";
 
 const WEATHER = ["Nắng", "Mưa", "Mưa nhỏ", "Âm u"] as const;
@@ -21,7 +22,7 @@ export function DiaryForm({ projectId }: { projectId: string }) {
   const { settings, loading: settingsLoading, error: settingsError } = useH2qSettings();
   const { fix, loading: gpsLoading, error: gpsError, capture } = useGeolocation();
 
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => localDateInput());
   const [weather, setWeather] = useState<(typeof WEATHER)[number]>("Nắng");
   const [siteCondition, setSiteCondition] = useState<(typeof CONDITION)[number]>("Tốt");
   const [safety, setSafety] = useState<(typeof CONDITION)[number]>("Tốt");
@@ -45,7 +46,11 @@ export function DiaryForm({ projectId }: { projectId: string }) {
       capture();
       void drainSiteDiaryQueue();
     }, 0);
-    return () => window.clearTimeout(t);
+    window.addEventListener("online", drainSiteDiaryQueue);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("online", drainSiteDiaryQueue);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

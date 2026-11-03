@@ -81,7 +81,8 @@ export async function drainSiteDiaryQueue(): Promise<number> {
       await idbDelete(row.client_request_id);
       drained += 1;
     } catch (err) {
-      if (!(err instanceof ApiError) || !isRetryable(err)) {
+      const expired = err instanceof ApiError && err.status === 401;
+      if (!expired && (!(err instanceof ApiError) || !isRetryable(err))) {
         await idbDelete(row.client_request_id).catch(() => undefined);
       }
     }

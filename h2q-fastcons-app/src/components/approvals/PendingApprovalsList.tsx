@@ -22,6 +22,8 @@ export function PendingApprovalsList() {
   const [rejectId, setRejectId] = useState("");
   const [reason, setReason] = useState("");
   const [notice, setNotice] = useState("");
+  const [canApprove, setCanApprove] = useState(true);
+  const [truncated, setTruncated] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,6 +31,8 @@ export function PendingApprovalsList() {
     try {
       const data = await getPendingApprovals();
       setItems(data.items || []);
+      setCanApprove(data.viewer_can_approve !== false);
+      setTruncated(Boolean(data.truncated));
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Không tải được hàng đợi duyệt");
     } finally {
@@ -109,10 +113,11 @@ export function PendingApprovalsList() {
         </div>
       ) : null}
 
+      {truncated ? <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">Đang hiện 300 phiếu mới nhất. Duyệt hoặc từ chối bớt để thấy phiếu cũ hơn.</p> : null}
       {!loading && items.length === 0 ? (
         <EmptyState
-          title="Không có phiếu chờ"
-          description="Khi hiện trường gửi phiếu và bật chuyển duyệt, phiếu sẽ hiện ở đây."
+          title={canApprove ? "Không có phiếu chờ" : "Bạn chưa được giao duyệt"}
+          description={canApprove ? "Khi hiện trường gửi phiếu và bật chuyển duyệt, phiếu sẽ hiện ở đây." : "Cần được giao vai trò chỉ huy hoặc phụ trách trên công trình. Vai trò hệ thống không đủ."}
         />
       ) : null}
 
@@ -145,8 +150,18 @@ export function PendingApprovalsList() {
                   {row.custom_h2q_geofence_outside ? " · ngoài vùng" : ""}
                 </p>
                 <p className="text-sm font-medium text-slate-800">{kind.effect}</p>
+                <p className="text-xs text-slate-500">{row.date || "—"} · {row.measured_by || "Chưa rõ người gửi"}</p>
               </CardHeader>
               <CardContent className="space-y-3">
+                {row.image_urls?.length ? (
+                  <div className="flex gap-2 overflow-x-auto">
+                    {row.image_urls.map((url) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer">
+                        <img src={url} alt="Ảnh phiếu" className="h-20 w-20 rounded-lg object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
                 {rejecting ? (
                   <label className="block space-y-2">
                     <span className="text-sm font-bold text-slate-800">Lý do từ chối</span>

@@ -20,6 +20,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { enqueueMeasurement } from "@/lib/supabase/measurements";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { evaluateGeofence } from "@/lib/geo/geofence";
+import { localDateInput } from "@/lib/date/local";
 import { fmtQty, previewQuantitySlip } from "@/lib/quantity/slip";
 import type { BoqItemRow } from "@/lib/domain/types";
 import Link from "next/link";
@@ -65,6 +66,7 @@ export function ReportForm({ projectId }: { projectId: string }) {
       executed: Number(selectedBoq.executed_qty ?? 0),
       accepted: Number(selectedBoq.accepted_qty ?? 0),
       pendingExecuted: Number(selectedBoq.executed_pending_qty ?? 0),
+      pendingAccepted: Number(selectedBoq.accepted_pending_qty ?? 0),
       policy: settings.boq_over_limit_policy,
       hasNote: Boolean(remarks.trim()),
     });
@@ -106,7 +108,7 @@ export function ReportForm({ projectId }: { projectId: string }) {
       setError("Nhập khối lượng hoàn thành (số khác 0).");
       return;
     }
-    if (settings.gps_required && (!fix?.lat || !fix?.lng)) {
+    if (settings.gps_required && (fix?.lat == null || fix?.lng == null)) {
       setError("GPS bắt buộc (H2Q Settings). Bấm «Lấy GPS».");
       return;
     }
@@ -150,7 +152,7 @@ export function ReportForm({ projectId }: { projectId: string }) {
         entry_kind: entryKind,
         boq_item: selectedBoq?.name,
         project_name: projectName,
-        date: new Date().toISOString().slice(0, 10),
+        date: localDateInput(),
         uom: selectedBoq?.unit,
         work_order: workOrder || undefined,
         rate,

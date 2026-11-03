@@ -4,7 +4,7 @@ import { SupplyBoard } from "@/components/manage/SupplyBoard";
 
 export default function SupplyPage() {
   return (
-    <AppShell title="Vật tư" wide>
+    <AppShell title="Nhà cung cấp" wide>
       <OfficeLinks />
       <SupplyBoard />
     </AppShell>

@@ -6,10 +6,14 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   ["/manage", "Công trình"],
   ["/estimate", "Dự toán"],
+  ["/control", "Điều hành"],
   ["/packages", "Gói việc"],
   ["/contracts", "Giao thầu"],
   ["/changes", "Phát sinh"],
-  ["/supply", "Vật tư"],
+  ["/supply", "Nhà cung cấp"],
+  ["/stock", "Kho"],
+  ["/archive", "Hồ sơ"],
+  ["/search", "Tìm"],
   ["/quotes", "Báo giá"],
   ["/audit", "Kiểm toán"],
 ] as const;

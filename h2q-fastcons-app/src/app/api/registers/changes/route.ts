@@ -56,6 +56,11 @@ export async function PATCH(request: Request) {
   if (!body?.id || !["Draft", "Submitted", "Approved", "Rejected"].includes(status)) {
     return jsonError("Trạng thái phát sinh không hợp lệ.", 400);
   }
+  const current = await gate.supabase.from("scope_changes").select("status").eq("id", body.id).maybeSingle();
+  if (current.error) return jsonError(current.error.message, 400);
+  const from = (current.data as { status: string } | null)?.status;
+  const allowed: Record<string, string[]> = { Draft: ["Submitted"], Submitted: ["Approved", "Rejected"] };
+  if (!from || !allowed[from]?.includes(status)) return jsonError("Chỉ được trình từ nháp, rồi duyệt hoặc từ chối.", 400);
   const updated = await gate.supabase.from("scope_changes").update({ status }).eq("id", body.id);
   if (updated.error) return jsonError(updated.error.message, 400);
   return NextResponse.json({ id: body.id, status });

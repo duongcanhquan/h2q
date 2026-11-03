@@ -1,0 +1,47 @@
+type Hit = { at: number; status: number; body: unknown };
+
+const memory = new Map<string, Hit>();
+const flights = new Map<string, Promise<{ ok: boolean; status: number; body: unknown }>>();
+const FRESH_MS = 20000;
+
+export function peek(url: string) {
+  return memory.get(url) || null;
+}
+
+export function invalidate(url?: string) {
+  if (!url) {
+    memory.clear();
+    return;
+  }
+  for (const key of memory.keys()) {
+    if (key === url || key.startsWith(`${url}?`) || key.startsWith(`${url}/`)) memory.delete(key);
+  }
+}
+
+export async function getJson(url: string, force = false) {
+  if (!force) {
+    const hit = memory.get(url);
+    if (hit && Date.now() - hit.at < FRESH_MS) {
+      return { ok: hit.status >= 200 && hit.status < 300, status: hit.status, body: hit.body };
+    }
+    const pending = flights.get(url);
+    if (pending) return pending;
+  }
+  const job = (async () => {
+    const response = await fetch(url, { credentials: "include" });
+    const body = (await response.json().catch(() => ({}))) as unknown;
+    if (response.ok) memory.set(url, { at: Date.now(), status: response.status, body });
+    return { ok: response.ok, status: response.status, body };
+  })().finally(() => {
+    flights.delete(url);
+  });
+  flights.set(url, job);
+  return job;
+}
+
+export function warm(url: string) {
+  const hit = memory.get(url);
+  if (hit && Date.now() - hit.at < FRESH_MS) return;
+  if (flights.has(url)) return;
+  void getJson(url).catch(() => undefined);
+}

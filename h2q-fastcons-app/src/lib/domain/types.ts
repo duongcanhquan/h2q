@@ -121,6 +121,7 @@ export type PendingApprovalRow = {
   next_roles?: string[];
   entry_kind?: string | null;
   custom_h2q_geofence_outside?: number;
+  image_urls?: string[];
   modified?: string;
 };
 

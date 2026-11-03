@@ -30,6 +30,8 @@ export function PhotoCapture({
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
   const [globalError, setGlobalError] = useState("");
 
   async function handleFiles(fileList: FileList | null) {
@@ -43,7 +45,7 @@ export function PhotoCapture({
       previewUrl: URL.createObjectURL(file),
       uploading: true,
     }));
-    onChange([...value, ...starters]);
+    onChange([...valueRef.current, ...starters]);
 
     const uploaded: PhotoItem[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -64,10 +66,7 @@ export function PhotoCapture({
       }
     }
 
-    onChange([
-      ...value.filter((p) => !starters.some((s) => s.id === p.id)),
-      ...uploaded,
-    ]);
+    onChange(valueRef.current.map((item) => uploaded.find((next) => next.id === item.id) ?? item));
 
     if (cameraRef.current) cameraRef.current.value = "";
     if (galleryRef.current) galleryRef.current.value = "";

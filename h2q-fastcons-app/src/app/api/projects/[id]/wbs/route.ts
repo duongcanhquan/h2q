@@ -93,7 +93,7 @@ function toBoq(
     actual_qty: ledger.executed,
     actual_amount: ledger.executed * rate,
     remaining_qty: planned - ledger.executed,
-    acceptance_room: ledger.executed > 0 ? ledger.executed - ledger.accepted : planned - ledger.accepted,
+    acceptance_room: (ledger.executed > 0 ? ledger.executed : planned) - ledger.accepted - ledger.accepted_pending,
     progress_percent: planned > 0 ? (ledger.executed / planned) * 100 : null,
     over_limit: planned > 0 && ledger.executed > planned ? 1 : 0,
     task: item.task_id,

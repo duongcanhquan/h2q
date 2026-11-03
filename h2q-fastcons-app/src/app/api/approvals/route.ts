@@ -25,7 +25,7 @@ export async function GET() {
       .select("*")
       .eq("approval_status", "Pending Approval")
       .order("created_at", { ascending: false })
-      .limit(100),
+      .limit(300),
     loadSettings(supabase),
   ]);
   if (profileRes.error) return jsonError(profileRes.error.message, 400);
@@ -105,9 +105,15 @@ export async function GET() {
       next_roles: ["Chỉ huy"],
       entry_kind: slip.entry_kind,
       custom_h2q_geofence_outside: slip.geofence_outside ? 1 : 0,
+      image_urls: slip.image_urls || [],
       modified: slip.updated_at,
     };
   });
 
-  return NextResponse.json({ items, count: items.length });
+  return NextResponse.json({
+    items,
+    count: items.length,
+    truncated: (slipRes.data || []).length >= 300,
+    viewer_can_approve: isAdmin || approverProjects.size > 0,
+  });
 }

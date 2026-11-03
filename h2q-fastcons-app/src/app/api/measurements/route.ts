@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (boqRes.error) return jsonError(boqRes.error.message, 400);
     boq = (boqRes.data as BoqRecord | null) ?? null;
+    if (!boq) return jsonError("Đầu việc không thuộc công trình này.", 400);
   }
 
   const kind = entryKindOf(body.entry_kind);
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
       executed: ledger.executed,
       accepted: ledger.accepted,
       pendingExecuted: ledger.executed_pending,
+      pendingAccepted: ledger.accepted_pending,
       policy: settings.boq_over_limit_policy,
       hasNote: Boolean(remarks),
     });

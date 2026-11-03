@@ -33,10 +33,7 @@ export function ProjectGrid() {
   }
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      void load();
-    }, 0);
-    return () => window.clearTimeout(t);
+    void load();
   }, []);
 
   useEffect(() => {

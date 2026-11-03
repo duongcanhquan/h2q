@@ -79,6 +79,7 @@ export function EstimateBoard() {
   }
 
   async function attach(id: string, itemId: string) {
+    setError("");
     const res = await fetch(`/api/registers/boq/${id}`, {
       method: "PATCH",
       credentials: "include",

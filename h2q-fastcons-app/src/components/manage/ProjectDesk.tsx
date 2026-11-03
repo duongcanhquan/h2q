@@ -4,7 +4,9 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
+import { DeskTabs } from "@/components/ui/DeskTabs";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { getJson } from "@/lib/api/cache";
 import type { BoqItemRow, ProjectWbsData, TaskRow } from "@/lib/domain/types";
 
 const fieldClass =
@@ -42,17 +44,19 @@ export function ProjectDesk({ code }: { code: string }) {
   const [task, setTask] = useState({ id: "", code: "", subject: "" });
   const [boq, setBoq] = useState({ id: "", code: "", description: "", unit: "", planned_qty: "", rate: "", task_id: "" });
 
-  async function reload() {
+  async function reload(force = false) {
+    const projectUrl = `/api/projects/${encodeURIComponent(code)}`;
+    const wbsUrl = `/api/projects/${encodeURIComponent(code)}/wbs`;
     const [projectRes, wbsRes, sessionRes] = await Promise.all([
-      fetch(`/api/projects/${encodeURIComponent(code)}`, { credentials: "include" }),
-      fetch(`/api/projects/${encodeURIComponent(code)}/wbs`, { credentials: "include" }),
-      fetch("/api/auth/session", { credentials: "include" }),
+      getJson(projectUrl, force),
+      getJson(wbsUrl, force),
+      getJson("/api/auth/session", force),
     ]);
-    const project = (await projectRes.json().catch(() => ({}))) as ProjectInfo & { message?: string };
-    const book = (await wbsRes.json().catch(() => ({}))) as ProjectWbsData & { message?: string };
+    const project = (projectRes.body || {}) as ProjectInfo & { message?: string };
+    const book = (wbsRes.body || {}) as ProjectWbsData & { message?: string };
     if (!projectRes.ok) throw new ApiError(project.message || "Không tải được công trình.", projectRes.status);
     if (!wbsRes.ok) throw new ApiError(book.message || "Không tải được khối lượng.", wbsRes.status);
-    const session = (await sessionRes.json().catch(() => ({}))) as { app_role?: string };
+    const session = (sessionRes.body || {}) as { app_role?: string };
     setInfo(project);
     setWbs(book);
     setAdmin(session.app_role === "admin");
@@ -105,7 +109,7 @@ export function ProjectDesk({ code }: { code: string }) {
         window.location.href = `/manage/${encodeURIComponent(saved.code)}`;
         return;
       }
-      await reload();
+      await reload(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không lưu được công trình.");
     } finally {
@@ -122,7 +126,7 @@ export function ProjectDesk({ code }: { code: string }) {
       if (task.id) await send(path, "PATCH", { kind: "task", ...task, status: "Open" });
       else await send(path, "POST", { kind: "task", code: task.code, subject: task.subject });
       setTask({ id: "", code: "", subject: "" });
-      await reload();
+      await reload(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không lưu được hạng mục.");
     } finally {
@@ -149,7 +153,7 @@ export function ProjectDesk({ code }: { code: string }) {
       if (boq.id) await send(path, "PATCH", payload);
       else await send(path, "POST", payload);
       setBoq({ id: "", code: "", description: "", unit: "", planned_qty: "", rate: "", task_id: "" });
-      await reload();
+      await reload(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không lưu được công việc.");
     } finally {
@@ -162,7 +166,7 @@ export function ProjectDesk({ code }: { code: string }) {
     setError("");
     try {
       await send(`/api/projects/${encodeURIComponent(code)}/catalog?kind=${kind}&id=${encodeURIComponent(id)}`, "DELETE");
-      await reload();
+      await reload(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không xóa được.");
     }
@@ -232,7 +236,9 @@ export function ProjectDesk({ code }: { code: string }) {
         </form>
       ) : null}
 
-      <section className="space-y-3">
+      <DeskTabs tabs={["Hạng mục", "Khối lượng"]}>
+      {[
+      <section key="tasks" className="space-y-3">
         <h3 className="text-lg font-semibold text-slate-900">Hạng mục</h3>
         {admin ? (
           <form onSubmit={onSaveTask} className="grid gap-3 md:grid-cols-[140px_1fr_auto]">
@@ -264,9 +270,9 @@ export function ProjectDesk({ code }: { code: string }) {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>,
 
-      <section className="space-y-3">
+      <section key="qty" className="space-y-3">
         <h3 className="text-lg font-semibold text-slate-900">Công việc và khối lượng</h3>
         {admin ? (
           <form onSubmit={onSaveBoq} className="grid gap-3 md:grid-cols-6">
@@ -330,7 +336,9 @@ export function ProjectDesk({ code }: { code: string }) {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>,
+      ]}
+      </DeskTabs>
     </div>
   );
 }

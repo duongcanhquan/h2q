@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/data/field";
+import { fileFolder, storeFile } from "@/lib/storage/files";
 
 export const runtime = "nodejs";
 
@@ -13,18 +14,15 @@ export async function POST(request: Request) {
     return jsonError("Chưa có tệp ảnh.", 400);
   }
   if (file.size > 15 * 1024 * 1024) {
-    return jsonError("Ảnh lớn hơn 15 MB.", 400);
+    return jsonError("Tệp lớn hơn 15 MB.", 400);
   }
 
-  const safe = file.name.replace(/[^\w.\-]+/g, "_").slice(-80) || "photo.jpg";
-  const path = `${gate.user.id}/${crypto.randomUUID()}-${safe}`;
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const uploaded = await gate.supabase.storage.from("site-photos").upload(path, bytes, {
-    contentType: file.type || "image/jpeg",
-    upsert: false,
-  });
-  if (uploaded.error) return jsonError(uploaded.error.message, 400);
-
-  const { data } = gate.supabase.storage.from("site-photos").getPublicUrl(path);
-  return NextResponse.json({ file_url: data.publicUrl, name: path });
+  try {
+    const folder = fileFolder(new URL(request.url).searchParams.get("folder"));
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const stored = await storeFile(folder, file.name, bytes, file.type || "application/octet-stream");
+    return NextResponse.json({ file_url: stored.url, name: stored.key, store: stored.store });
+  } catch (err) {
+    return jsonError(err instanceof Error ? err.message : "Không lưu được tệp.", 400);
+  }
 }

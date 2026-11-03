@@ -15,6 +15,7 @@ export function previewQuantitySlip(input: {
   executed: number;
   accepted: number;
   pendingExecuted?: number;
+  pendingAccepted?: number;
   policy?: string | null;
   hasNote?: boolean;
 }): QuantityPreview {
@@ -22,6 +23,7 @@ export function previewQuantitySlip(input: {
   const executedQty = Number(input.executed) || 0;
   const acceptedQty = Number(input.accepted) || 0;
   const pendingQty = Number(input.pendingExecuted) || 0;
+  const pendingAccepted = Number(input.pendingAccepted) || 0;
   const thisQty = Number(input.qty) || 0;
   const mode = input.policy || "Warn";
 
@@ -36,7 +38,7 @@ export function previewQuantitySlip(input: {
     basis = "khối lượng hợp đồng";
     column = "thực hiện";
   } else {
-    already = acceptedQty;
+    already = acceptedQty + pendingAccepted;
     if (executedQty > 0) {
       cap = executedQty;
       basis = "thực hiện đã duyệt";

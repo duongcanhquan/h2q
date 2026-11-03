@@ -1,12 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ebe6df;
-  --foreground: #1c1917;
-  --accent: #d97706;
-  --ink: #1c1917;
-  --glass: rgba(255, 255, 255, 0.62);
-  --glass-line: rgba(255, 255, 255, 0.72);
+  --background: #d9d3c7;
+  --foreground: #14181d;
+  --accent: #c2410c;
+  --ink: #14181d;
+  --steel: #141b24;
+  --safety: #c2410c;
+  --caution: #f5b301;
+  --panel: #fffdf8;
+  --line: #c9c0b2;
+  --glass: #fffdf8;
+  --glass-line: #c9c0b2;
   --type: 0.9375rem;
 }
 
@@ -23,8 +28,8 @@ html {
 
 body {
   background:
-    radial-gradient(900px 480px at 0% 0%, rgba(217, 119, 6, 0.16), transparent 55%),
-    radial-gradient(800px 420px at 100% 0%, rgba(120, 113, 108, 0.16), transparent 50%),
+    linear-gradient(180deg, rgba(194, 65, 12, 0.14), transparent 220px),
+    repeating-linear-gradient(90deg, rgba(20, 27, 36, 0.04) 0 1px, transparent 1px 28px),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
@@ -62,7 +67,6 @@ textarea {
   touch-action: manipulation;
 }
 
-aside,
 header,
 nav.fixed,
 .glass,
@@ -70,11 +74,87 @@ nav.fixed,
 .rounded-3xl.bg-white,
 .rounded-2xl.ring-1,
 .rounded-xl.bg-white {
-  background: var(--glass);
-  backdrop-filter: blur(18px) saturate(1.25);
-  -webkit-backdrop-filter: blur(18px) saturate(1.25);
-  border-color: var(--glass-line);
-  box-shadow: 0 8px 28px rgba(28, 25, 23, 0.05);
+  background: var(--panel);
+  border-color: var(--line);
+  border-top: 3px solid var(--steel);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.rounded-2xl,
+.rounded-3xl,
+.rounded-xl,
+.rounded-lg {
+  border-radius: 4px;
+}
+
+button,
+a.bg-slate-900,
+a.bg-stone-900,
+a.bg-amber-500 {
+  transition: transform 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+button:hover,
+a.bg-slate-900:hover,
+a.bg-stone-900:hover,
+a.bg-amber-500:hover {
+  transform: translateY(-1px);
+}
+
+button:active,
+a.bg-slate-900:active,
+a.bg-stone-900:active,
+a.bg-amber-500:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.desk-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 2px solid var(--steel);
+}
+
+.desk-tabs button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 14px;
+  color: #3f4854;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.desk-tabs button.is-on {
+  background: var(--steel);
+  color: #fff;
+}
+
+.desk-tabs button:hover,
+.desk-tabs button:active {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  a.bg-slate-900,
+  a.bg-stone-900,
+  a.bg-amber-500 {
+    transition: none;
+  }
+
+  button:hover,
+  button:active,
+  a.bg-slate-900:hover,
+  a.bg-slate-900:active,
+  a.bg-stone-900:hover,
+  a.bg-stone-900:active,
+  a.bg-amber-500:hover,
+  a.bg-amber-500:active {
+    transform: none;
+  }
 }
 
 button.bg-slate-900,
@@ -92,13 +172,17 @@ button.bg-slate-900,
 a.bg-slate-900,
 button.bg-stone-900,
 a.bg-stone-900 {
-  background: #1c1917;
+  background: #c2410c;
   color: #fff;
 }
 
 button.bg-amber-500,
-a.bg-amber-500,
+a.bg-amber-500 {
+  background: #f5b301;
+  color: #1a1206;
+}
+
 span.bg-amber-500 {
-  background: #f59e0b;
-  color: #1c1917;
+  background: #c2410c;
+  color: #fff;
 }

@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f59e0b",
+  themeColor: "#c2410c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -43,16 +43,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
         <style>{`
           button.bg-slate-900, a.bg-slate-900, button.bg-stone-900, a.bg-stone-900 {
-            background: #1c1917 !important;
+            background: #c2410c !important;
+            color: #fff !important;
+            border-radius: 4px !important;
+            backdrop-filter: none !important;
+          }
+          button.bg-amber-500, a.bg-amber-500 {
+            background: #f5b301 !important;
+            color: #1a1206 !important;
+            border-radius: 4px !important;
+            backdrop-filter: none !important;
+          }
+          span.bg-amber-500, div.bg-amber-500 {
+            background: #c2410c !important;
             color: #fff !important;
             backdrop-filter: none !important;
           }
-          button.bg-amber-500, a.bg-amber-500, span.bg-amber-500, div.bg-amber-500 {
-            background: #f59e0b !important;
-            color: #1c1917 !important;
-            backdrop-filter: none !important;
-          }
-          span.bg-amber-500, div.bg-amber-500 { color: #fff !important; }
         `}</style>
         {children}
       </body>

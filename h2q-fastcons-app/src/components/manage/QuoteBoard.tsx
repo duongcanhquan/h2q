@@ -20,6 +20,7 @@ export function QuoteBoard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ project_code: "", supplier_id: "", code: "", title: "", amount: "" });
+  const [scores, setScores] = useState<Record<string, string>>({});
 
   async function reload() {
     const [res, session] = await Promise.all([
@@ -42,6 +43,7 @@ export function QuoteBoard() {
 
   async function onCreate(event: FormEvent) {
     event.preventDefault();
+    setError("");
     const res = await fetch("/api/registers/quotes", {
       method: "POST",
       credentials: "include",
@@ -55,6 +57,8 @@ export function QuoteBoard() {
   }
 
   async function review(id: string, status: string, score?: string) {
+    setError("");
+    if (!score) return setError("Chọn điểm từ 1 đến 5 trước khi chọn hoặc loại.");
     const res = await fetch("/api/registers/quotes", {
       method: "PATCH",
       credentials: "include",
@@ -88,7 +92,7 @@ export function QuoteBoard() {
         </form>
       ) : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="overflow-x-auto rounded-2xl">
+        <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
           <table className="min-w-full">
             <thead>
               <tr>
@@ -99,7 +103,7 @@ export function QuoteBoard() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t border-white/50">
+                <tr key={row.id} className="border-t border-slate-100">
                   <td className="px-3 py-3">{row.project_code}</td>
                   <td className="px-3 py-3">{row.code} · {row.title}</td>
                   <td className="px-3 py-3">{row.supplier_name || "—"}</td>
@@ -107,9 +111,13 @@ export function QuoteBoard() {
                   <td className="px-3 py-3">
                     {row.status}{row.score ? ` · ${row.score}/5` : ""}
                     {admin ? (
-                      <span className="ml-3 space-x-2">
-                        <button type="button" className="font-medium text-amber-800" onClick={() => void review(row.id, "Accepted", "5")}>Chọn</button>
-                        <button type="button" className="font-medium text-stone-700" onClick={() => void review(row.id, "Rejected", "2")}>Loại</button>
+                      <span className="ml-3 inline-flex flex-wrap items-center gap-2">
+                        <select className="rounded-lg border border-slate-200 px-2 py-1" value={scores[row.id] || ""} onChange={(event) => setScores({ ...scores, [row.id]: event.target.value })}>
+                          <option value="">Điểm</option>
+                          {["1", "2", "3", "4", "5"].map((score) => <option key={score} value={score}>{score}</option>)}
+                        </select>
+                        <button type="button" className="font-medium text-amber-800" onClick={() => void review(row.id, "Accepted", scores[row.id])}>Chọn</button>
+                        <button type="button" className="font-medium text-stone-700" onClick={() => void review(row.id, "Rejected", scores[row.id])}>Loại</button>
                       </span>
                     ) : null}
                   </td>
@@ -118,7 +126,7 @@ export function QuoteBoard() {
             </tbody>
           </table>
         </div>
-        <aside className="rounded-2xl p-4">
+        <aside className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
           <h2 className="mb-3">Điểm nhà cung cấp</h2>
           {ratings.length === 0 ? <p className="text-stone-600">Chưa có đánh giá.</p> : null}
           {ratings.map((row) => (
