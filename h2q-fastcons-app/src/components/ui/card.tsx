@@ -8,7 +8,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cx(
-        "rounded-2xl border border-slate-200/80 bg-white text-slate-950 shadow-sm",
+        "rounded-2xl border border-slate-200/60 bg-white/75 text-slate-950 shadow-[0_10px_30px_rgba(30,58,138,0.08)] backdrop-blur-xl",
         className,
       )}
       {...props}

@@ -2,15 +2,15 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
 import { DeskTabs } from "@/components/ui/DeskTabs";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { getJson } from "@/lib/api/cache";
+import { getJson, invalidate } from "@/lib/api/cache";
 import type { BoqItemRow, ProjectWbsData, TaskRow } from "@/lib/domain/types";
 
-const fieldClass =
-  "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none ring-amber-500 focus:border-amber-500 focus:ring-2";
+const fieldClass = "field text-sm";
 
 type ProjectInfo = {
   code: string;
@@ -35,6 +35,7 @@ function day(value: string | null) {
 }
 
 export function ProjectDesk({ code }: { code: string }) {
+  const router = useRouter();
   const [info, setInfo] = useState<ProjectInfo | null>(null);
   const [wbs, setWbs] = useState<ProjectWbsData | null>(null);
   const [admin, setAdmin] = useState(false);
@@ -63,9 +64,12 @@ export function ProjectDesk({ code }: { code: string }) {
   }
 
   useEffect(() => {
-    reload()
-      .catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được sổ công trình."))
-      .finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload()
+        .catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được sổ công trình."))
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [code]);
 
   const totals = useMemo(() => {
@@ -95,6 +99,7 @@ export function ProjectDesk({ code }: { code: string }) {
     });
     const data = (await response.json().catch(() => ({}))) as { message?: string; code?: string };
     if (!response.ok) throw new ApiError(data.message || "Không lưu được.", response.status);
+    invalidate("/api/projects");
     return data;
   }
 
@@ -106,7 +111,7 @@ export function ProjectDesk({ code }: { code: string }) {
     try {
       const saved = await send(`/api/projects/${encodeURIComponent(code)}`, "PATCH", info);
       if (saved.code && saved.code !== code) {
-        window.location.href = `/manage/${encodeURIComponent(saved.code)}`;
+        router.replace(`/manage/${encodeURIComponent(saved.code)}`);
         return;
       }
       await reload(true);
@@ -194,10 +199,10 @@ export function ProjectDesk({ code }: { code: string }) {
           <p className="text-sm text-slate-600">{info.code}</p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/project/${encodeURIComponent(info.code)}/diary`} className="inline-flex min-h-11 items-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white">
+          <Link href={`/project/${encodeURIComponent(info.code)}/diary`} className="btn btn-primary text-sm">
             Nhật ký
           </Link>
-          <Link href={`/project/${encodeURIComponent(info.code)}/report`} className="inline-flex min-h-11 items-center rounded-xl bg-amber-500 px-4 text-sm font-semibold text-slate-900">
+          <Link href={`/project/${encodeURIComponent(info.code)}/report`} className="btn btn-secondary text-sm">
             Phiếu hiện trường
           </Link>
         </div>
@@ -222,7 +227,7 @@ export function ProjectDesk({ code }: { code: string }) {
           </select>
           <input className={fieldClass} placeholder="Chủ đầu tư" value={info.customer || ""} onChange={(e) => setInfo({ ...info, customer: e.target.value })} />
           <input className={fieldClass} placeholder="Đơn vị thi công" value={info.company || ""} onChange={(e) => setInfo({ ...info, company: e.target.value })} />
-          <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-slate-900 text-sm font-semibold text-white disabled:opacity-60">
+          <button type="submit" disabled={saving} className="btn btn-primary text-sm disabled:opacity-60">
             Lưu công trình
           </button>
           <label className="text-xs text-slate-500">
@@ -244,7 +249,7 @@ export function ProjectDesk({ code }: { code: string }) {
           <form onSubmit={onSaveTask} className="grid gap-3 md:grid-cols-[140px_1fr_auto]">
             <input className={fieldClass} placeholder="Mã HM" value={task.code} onChange={(e) => setTask({ ...task, code: e.target.value })} required />
             <input className={fieldClass} placeholder="Tên hạng mục" value={task.subject} onChange={(e) => setTask({ ...task, subject: e.target.value })} required />
-            <button className="min-h-11 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white" disabled={saving}>
+            <button className="btn btn-primary text-sm" disabled={saving}>
               {task.id ? "Lưu hạng mục" : "Thêm hạng mục"}
             </button>
           </form>
@@ -287,7 +292,7 @@ export function ProjectDesk({ code }: { code: string }) {
             <input className={fieldClass} placeholder="ĐVT" value={boq.unit} onChange={(e) => setBoq({ ...boq, unit: e.target.value })} />
             <input className={fieldClass} placeholder="KL kế hoạch" inputMode="decimal" value={boq.planned_qty} onChange={(e) => setBoq({ ...boq, planned_qty: e.target.value })} />
             <input className={fieldClass} placeholder="Đơn giá" inputMode="decimal" value={boq.rate} onChange={(e) => setBoq({ ...boq, rate: e.target.value })} />
-            <button className="min-h-11 rounded-xl bg-amber-500 text-sm font-semibold text-slate-900 md:col-span-6" disabled={saving}>
+            <button className="btn btn-primary text-sm md:col-span-6" disabled={saving}>
               {boq.id ? "Lưu công việc" : "Thêm công việc"}
             </button>
           </form>

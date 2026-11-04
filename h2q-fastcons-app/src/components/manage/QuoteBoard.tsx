@@ -4,11 +4,12 @@ import { FormEvent, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { getJson, invalidate } from "@/lib/api/cache";
 
 type Row = { id: string; code: string; title: string; amount: number; status: string; score: number | null; review: string | null; supplier_name: string; project_code: string };
 type Rating = { supplier_id: string; supplier_name: string; average: number; count: number };
 type Option = { id: string; name?: string; code?: string };
-const field = "min-h-11 w-full rounded-xl border border-stone-300/80 bg-white/80 px-3 shadow-none";
+const field = "field text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
 
 export function QuoteBoard() {
@@ -22,14 +23,14 @@ export function QuoteBoard() {
   const [form, setForm] = useState({ project_code: "", supplier_id: "", code: "", title: "", amount: "" });
   const [scores, setScores] = useState<Record<string, string>>({});
 
-  async function reload() {
+  async function reload(force = false) {
     const [res, session] = await Promise.all([
-      fetch("/api/registers/quotes", { credentials: "include" }),
-      fetch("/api/auth/session", { credentials: "include" }),
+      getJson("/api/registers/quotes", force),
+      getJson("/api/auth/session", force),
     ]);
-    const data = (await res.json().catch(() => ({}))) as { message?: string; rows?: Row[]; ratings?: Rating[]; suppliers?: Option[]; projects?: Option[] };
+    const data = (res.body || {}) as { message?: string; rows?: Row[]; ratings?: Rating[]; suppliers?: Option[]; projects?: Option[] };
     if (!res.ok) throw new ApiError(data.message || "Không tải được báo giá.", res.status);
-    const who = (await session.json().catch(() => ({}))) as { app_role?: string };
+    const who = (session.body || {}) as { app_role?: string };
     setRows(data.rows || []);
     setRatings(data.ratings || []);
     setSuppliers(data.suppliers || []);
@@ -38,7 +39,10 @@ export function QuoteBoard() {
   }
 
   useEffect(() => {
-    reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được báo giá.")).finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được báo giá.")).finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function onCreate(event: FormEvent) {
@@ -53,7 +57,8 @@ export function QuoteBoard() {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không tạo được báo giá.");
     setForm({ ...form, code: "", title: "", amount: "" });
-    await reload();
+    invalidate("/api/registers/quotes");
+    await reload(true);
   }
 
   async function review(id: string, status: string, score?: string) {
@@ -67,7 +72,8 @@ export function QuoteBoard() {
     });
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không lưu được đánh giá.");
-    await reload();
+    invalidate("/api/registers/quotes");
+    await reload(true);
   }
 
   if (loading) return <p className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Đang tải báo giá…</p>;

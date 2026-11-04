@@ -46,14 +46,21 @@ export async function POST(request: Request) {
     }
   }
 
-  const settings = await loadSettings(supabase);
-  if (!settings.enable_measurement_book) {
-    return jsonError("Sổ khối lượng đang tắt.", 400);
-  }
-
   const qty = num(body.quantity);
   if (qty == null || qty === 0) return jsonError("Nhập khối lượng khác 0.", 400);
   if (!body.project || !body.task) return jsonError("Thiếu công trình hoặc hạng mục.", 400);
+
+  const [settings, projectRes] = await Promise.all([
+    loadSettings(supabase),
+    supabase
+      .from("projects")
+      .select("id, code, name, geofence")
+      .eq("code", body.project)
+      .maybeSingle(),
+  ]);
+  if (!settings.enable_measurement_book) {
+    return jsonError("Sổ khối lượng đang tắt.", 400);
+  }
 
   const imageUrls = (body.image_urls || []).map((url) => url.trim()).filter(Boolean);
   if (settings.min_photos_on_submit > 0 && imageUrls.length < settings.min_photos_on_submit) {
@@ -63,33 +70,32 @@ export async function POST(request: Request) {
     return jsonError("GPS bắt buộc.", 400);
   }
 
-  const projectRes = await supabase.from("projects").select("*").eq("code", body.project).maybeSingle();
   if (projectRes.error) return jsonError(projectRes.error.message, 400);
   if (!projectRes.data) return jsonError("Không tìm thấy công trình.", 404);
   const project = projectRes.data as ProjectRecord;
 
-  const taskRes = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("id", body.task)
-    .eq("project_id", project.id)
-    .maybeSingle();
+  const [taskRes, boqRes] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, code, subject")
+      .eq("id", body.task)
+      .eq("project_id", project.id)
+      .maybeSingle(),
+    body.boq_item
+      ? supabase
+          .from("boq_items")
+          .select("id, planned_qty, rate, unit")
+          .eq("id", body.boq_item)
+          .eq("project_id", project.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
   if (taskRes.error) return jsonError(taskRes.error.message, 400);
   if (!taskRes.data) return jsonError("Hạng mục không thuộc công trình này.", 400);
   const task = taskRes.data as TaskRecord;
-
-  let boq: BoqRecord | null = null;
-  if (body.boq_item) {
-    const boqRes = await supabase
-      .from("boq_items")
-      .select("*")
-      .eq("id", body.boq_item)
-      .eq("project_id", project.id)
-      .maybeSingle();
-    if (boqRes.error) return jsonError(boqRes.error.message, 400);
-    boq = (boqRes.data as BoqRecord | null) ?? null;
-    if (!boq) return jsonError("Đầu việc không thuộc công trình này.", 400);
-  }
+  if (boqRes.error) return jsonError(boqRes.error.message, 400);
+  const boq = (boqRes.data as BoqRecord | null) ?? null;
+  if (body.boq_item && !boq) return jsonError("Đầu việc không thuộc công trình này.", 400);
 
   const kind = entryKindOf(body.entry_kind);
   const remarks = cleanRemarks(body.remarks);
@@ -98,7 +104,8 @@ export async function POST(request: Request) {
     const slipRes = await supabase
       .from("measurements")
       .select("quantity, entry_kind, approval_status")
-      .eq("boq_item_id", boq.id);
+      .eq("boq_item_id", boq.id)
+      .in("approval_status", ["Approved", "Pending Approval"]);
     if (slipRes.error) return jsonError(slipRes.error.message, 400);
     const ledger = emptyLedger();
     for (const slip of slipRes.data || []) addToLedger(ledger, slip);

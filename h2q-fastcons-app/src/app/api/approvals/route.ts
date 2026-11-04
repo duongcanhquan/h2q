@@ -12,36 +12,50 @@ import type { PendingApprovalRow } from "@/lib/domain/types";
 
 export const runtime = "nodejs";
 
+const SLIP_COLS =
+  "id, slip_code, project_id, task_id, boq_item_id, created_by, measurement_date, quantity, entry_kind, work_order, over_limit, approval_status, approval_level, geofence_outside, image_urls, updated_at";
+
 export async function GET() {
   const gate = await requireUser();
   if (!gate.user || !gate.supabase) return gate.response;
   const { supabase, user } = gate;
 
-  const [profileRes, memberRes, slipRes, settings] = await Promise.all([
+  const [profileRes, memberRes, settings] = await Promise.all([
     supabase.from("profiles").select("app_role").eq("id", user.id).maybeSingle(),
     supabase.from("project_members").select("project_id, member_role").eq("user_id", user.id),
-    supabase
-      .from("measurements")
-      .select("*")
-      .eq("approval_status", "Pending Approval")
-      .order("created_at", { ascending: false })
-      .limit(300),
     loadSettings(supabase),
   ]);
   if (profileRes.error) return jsonError(profileRes.error.message, 400);
   if (memberRes.error) return jsonError(memberRes.error.message, 400);
-  if (slipRes.error) return jsonError(slipRes.error.message, 400);
 
   const isAdmin = (profileRes.data as Pick<ProfileRow, "app_role"> | null)?.app_role === "admin";
-  const approverProjects = new Set(
-    ((memberRes.data || []) as Pick<MembershipRow, "project_id" | "member_role">[])
-      .filter((row) => row.member_role === "approver" || row.member_role === "admin")
-      .map((row) => row.project_id),
-  );
-  const slips = ((slipRes.data || []) as MeasurementRecord[]).filter(
-    (slip) => isAdmin || approverProjects.has(slip.project_id),
-  );
+  const approverProjects = (
+    (memberRes.data || []) as Pick<MembershipRow, "project_id" | "member_role">[]
+  )
+    .filter((row) => row.member_role === "approver" || row.member_role === "admin")
+    .map((row) => row.project_id);
 
+  if (!isAdmin && approverProjects.length === 0) {
+    return NextResponse.json({
+      items: [],
+      count: 0,
+      truncated: false,
+      viewer_can_approve: false,
+    });
+  }
+
+  let slipQuery = supabase
+    .from("measurements")
+    .select(SLIP_COLS)
+    .eq("approval_status", "Pending Approval")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (!isAdmin) slipQuery = slipQuery.in("project_id", approverProjects);
+
+  const slipRes = await slipQuery;
+  if (slipRes.error) return jsonError(slipRes.error.message, 400);
+
+  const slips = (slipRes.data || []) as MeasurementRecord[];
   const projectIds = [...new Set(slips.map((slip) => slip.project_id))];
   const taskIds = [...new Set(slips.map((slip) => slip.task_id).filter(Boolean))] as string[];
   const boqIds = [...new Set(slips.map((slip) => slip.boq_item_id).filter(Boolean))] as string[];
@@ -113,7 +127,7 @@ export async function GET() {
   return NextResponse.json({
     items,
     count: items.length,
-    truncated: (slipRes.data || []).length >= 300,
-    viewer_can_approve: isAdmin || approverProjects.size > 0,
+    truncated: slips.length >= 300,
+    viewer_can_approve: true,
   });
 }

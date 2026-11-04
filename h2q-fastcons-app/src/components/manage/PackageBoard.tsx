@@ -4,11 +4,12 @@ import { FormEvent, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { getJson, invalidate } from "@/lib/api/cache";
 
 type Project = { id: string; code: string; name: string };
 type Row = { id: string; code: string; name: string; budget: number; project_code: string; project_name: string; planned_amount: number };
 type Item = { id: string; code: string; description: string; project_code: string; work_package_id: string | null };
-const field = "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm";
+const field = "field text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
 
 export function PackageBoard() {
@@ -21,14 +22,14 @@ export function PackageBoard() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ project_code: "", code: "", name: "", budget: "" });
 
-  async function reload() {
+  async function reload(force = false) {
     const [res, session] = await Promise.all([
-      fetch("/api/registers/packages", { credentials: "include" }),
-      fetch("/api/auth/session", { credentials: "include" }),
+      getJson("/api/registers/packages", force),
+      getJson("/api/auth/session", force),
     ]);
-    const data = (await res.json().catch(() => ({}))) as { message?: string; rows?: Row[]; projects?: Project[]; items?: Item[] };
+    const data = (res.body || {}) as { message?: string; rows?: Row[]; projects?: Project[]; items?: Item[] };
     if (!res.ok) throw new ApiError(data.message || "Không tải được gói việc.", res.status);
-    const who = (await session.json().catch(() => ({}))) as { app_role?: string };
+    const who = (session.body || {}) as { app_role?: string };
     setRows(data.rows || []);
     setItems(data.items || []);
     setProjects(data.projects || []);
@@ -36,7 +37,10 @@ export function PackageBoard() {
   }
 
   useEffect(() => {
-    reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được gói việc.")).finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được gói việc.")).finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function onCreate(event: FormEvent) {
@@ -51,7 +55,8 @@ export function PackageBoard() {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không tạo được gói việc.");
     setForm({ ...form, code: "", name: "", budget: "" });
-    await reload();
+    invalidate("/api/registers/packages");
+    await reload(true);
   }
 
   if (loading) return <p className="flex items-center gap-2 text-sm text-slate-600"><Loader2 className="size-4 animate-spin" /> Đang tải gói việc…</p>;
@@ -59,9 +64,8 @@ export function PackageBoard() {
   return (
     <div className="space-y-4">
       {error ? <ErrorBanner message={error} /> : null}
-      <p className="text-sm text-slate-600">Gói việc gom ngân sách. Cột kế hoạch là tổng thành tiền các đầu việc đã gắn vào gói. Lệch ngân sách hiện ngay trên dòng.</p>
       {admin ? (
-        <form onSubmit={onCreate} className="grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 md:grid-cols-5">
+        <form onSubmit={onCreate} className="glass-card grid gap-3 p-4 md:grid-cols-5">
           <select className={field} required value={form.project_code} onChange={(e) => setForm({ ...form, project_code: e.target.value })}>
             <option value="">Công trình</option>
             {projects.map((project) => <option key={project.id} value={project.code}>{project.code}</option>)}
@@ -69,11 +73,11 @@ export function PackageBoard() {
           <input className={field} placeholder="Mã gói" required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
           <input className={field} placeholder="Tên gói" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input className={field} placeholder="Ngân sách" inputMode="decimal" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
-          <button className="min-h-11 rounded-xl bg-slate-900 text-sm font-semibold text-white">Tạo gói</button>
+          <button type="submit" className="btn btn-primary text-sm">Tạo gói</button>
         </form>
       ) : null}
       {admin ? (
-        <form className="grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 md:grid-cols-3" onSubmit={async (event) => {
+        <form className="glass-card grid gap-3 p-4 md:grid-cols-3" onSubmit={async (event) => {
           event.preventDefault();
           setError("");
           const res = await fetch("/api/registers/packages", {
@@ -85,7 +89,8 @@ export function PackageBoard() {
           const data = (await res.json().catch(() => ({}))) as { message?: string };
           if (!res.ok) return setError(data.message || "Không gắn được đầu việc.");
           setAttach({ package_id: "", item_id: "" });
-          await reload();
+          invalidate("/api/registers/packages");
+          await reload(true);
         }}>
           <select className={field} required value={attach.package_id} onChange={(e) => setAttach({ package_id: e.target.value, item_id: "" })}>
             <option value="">Gói việc</option>
@@ -97,10 +102,10 @@ export function PackageBoard() {
               <option key={item.id} value={item.id}>{item.code} · {item.description}{item.work_package_id ? " · đã gắn" : ""}</option>
             ))}
           </select>
-          <button className="min-h-11 rounded-xl bg-slate-900 text-sm font-semibold text-white">Gắn vào gói</button>
+          <button type="submit" className="btn btn-primary text-sm">Gắn vào gói</button>
         </form>
       ) : null}
-      <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
+      <div className="glass-card overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="border-b text-xs uppercase text-slate-500">
             <tr>

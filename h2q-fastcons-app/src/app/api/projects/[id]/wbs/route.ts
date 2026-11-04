@@ -22,20 +22,29 @@ export async function GET(_request: Request, { params }: Params) {
 
   const { data: project, error } = await supabase
     .from("projects")
-    .select("*")
+    .select("id, code, name, geofence")
     .eq("code", code)
     .maybeSingle();
   if (error) return jsonError(error.message, 400);
   if (!project) return jsonError("Không tìm thấy công trình hoặc bạn chưa được phân công.", 404);
-  const row = project as ProjectRecord;
+  const row = project as Pick<ProjectRecord, "id" | "code" | "name" | "geofence">;
 
   const [taskRes, boqRes, slipRes] = await Promise.all([
-    supabase.from("tasks").select("*").eq("project_id", row.id).order("code"),
-    supabase.from("boq_items").select("*").eq("project_id", row.id).order("code"),
+    supabase
+      .from("tasks")
+      .select("id, code, subject, parent_id, is_group, status")
+      .eq("project_id", row.id)
+      .order("code"),
+    supabase
+      .from("boq_items")
+      .select("id, code, description, unit, planned_qty, rate, task_id")
+      .eq("project_id", row.id)
+      .order("code"),
     supabase
       .from("measurements")
       .select("boq_item_id, quantity, entry_kind, approval_status")
-      .eq("project_id", row.id),
+      .eq("project_id", row.id)
+      .in("approval_status", ["Approved", "Pending Approval"]),
   ]);
   if (taskRes.error) return jsonError(taskRes.error.message, 400);
   if (boqRes.error) return jsonError(boqRes.error.message, 400);

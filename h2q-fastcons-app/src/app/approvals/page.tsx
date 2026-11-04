@@ -3,13 +3,12 @@ import { PendingApprovalsList } from "@/components/approvals/PendingApprovalsLis
 
 export default function ApprovalsPage() {
   return (
-    <AppShell title="Chờ duyệt" backHref="/dashboard" wide>
-      <section className="space-y-1 pb-3">
-        <h2 className="text-xl font-bold text-slate-900">Phiếu chờ duyệt</h2>
-        <p className="text-sm text-slate-600">
-          Đọc dòng dưới mỗi phiếu trước khi bấm. Nghiệm thu mới được chứng nhận. Thực hiện chỉ ghi sản lượng.
-        </p>
-      </section>
+    <AppShell
+      title="Chờ duyệt"
+      subtitle="Đọc dòng dưới mỗi phiếu trước khi bấm. Nghiệm thu mới chứng nhận; thực hiện chỉ ghi sản lượng."
+      backHref="/dashboard"
+      wide
+    >
       <PendingApprovalsList />
     </AppShell>
   );

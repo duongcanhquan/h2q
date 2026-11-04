@@ -55,9 +55,12 @@ export function UserAdmin() {
   }
 
   useEffect(() => {
-    reload()
-      .catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được danh sách."))
-      .finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload()
+        .catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được danh sách."))
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   function openCreate() {

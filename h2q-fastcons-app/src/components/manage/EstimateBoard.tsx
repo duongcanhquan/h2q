@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { getJson, invalidate } from "@/lib/api/cache";
 
 type Project = { id: string; code: string; name: string };
 type Item = { id: string; project_id: string; code: string; description: string; boq_id: string | null; planned_qty: number; rate: number };
@@ -20,7 +21,7 @@ type Row = {
   planned_amount: number;
 };
 
-const field = "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm";
+const field = "field text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
 
 export function EstimateBoard() {
@@ -32,14 +33,14 @@ export function EstimateBoard() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ project_code: "", code: "", title: "", revision: "0" });
 
-  async function reload() {
+  async function reload(force = false) {
     const [res, session] = await Promise.all([
-      fetch("/api/registers/boq", { credentials: "include" }),
-      fetch("/api/auth/session", { credentials: "include" }),
+      getJson("/api/registers/boq", force),
+      getJson("/api/auth/session", force),
     ]);
-    const data = (await res.json().catch(() => ({}))) as { message?: string; rows?: Row[]; items?: Item[]; projects?: Project[] };
+    const data = (res.body || {}) as { message?: string; rows?: Row[]; items?: Item[]; projects?: Project[] };
     if (!res.ok) throw new ApiError(data.message || "Không tải được dự toán.", res.status);
-    const who = (await session.json().catch(() => ({}))) as { app_role?: string };
+    const who = (session.body || {}) as { app_role?: string };
     setRows(data.rows || []);
     setItems(data.items || []);
     setProjects(data.projects || []);
@@ -47,7 +48,10 @@ export function EstimateBoard() {
   }
 
   useEffect(() => {
-    reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được dự toán.")).finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được dự toán.")).finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function onCreate(event: FormEvent) {
@@ -62,7 +66,8 @@ export function EstimateBoard() {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không tạo được dự toán.");
     setForm({ project_code: form.project_code, code: "", title: "", revision: "0" });
-    await reload();
+    invalidate("/api/registers/boq");
+    await reload(true);
   }
 
   async function setStatus(id: string, status: string) {
@@ -75,7 +80,8 @@ export function EstimateBoard() {
     });
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không đổi được trạng thái.");
-    await reload();
+    invalidate("/api/registers/boq");
+    await reload(true);
   }
 
   async function attach(id: string, itemId: string) {
@@ -88,7 +94,8 @@ export function EstimateBoard() {
     });
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không gán được đầu việc.");
-    await reload();
+    invalidate("/api/registers/boq");
+    await reload(true);
   }
 
   if (loading) return <p className="flex items-center gap-2 text-sm text-slate-600"><Loader2 className="size-4 animate-spin" /> Đang tải dự toán…</p>;

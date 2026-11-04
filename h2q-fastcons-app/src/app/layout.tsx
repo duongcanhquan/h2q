@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#c2410c",
+  themeColor: "#1d4ed8",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -41,25 +41,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
-        <style>{`
-          button.bg-slate-900, a.bg-slate-900, button.bg-stone-900, a.bg-stone-900 {
-            background: #c2410c !important;
-            color: #fff !important;
-            border-radius: 4px !important;
-            backdrop-filter: none !important;
-          }
-          button.bg-amber-500, a.bg-amber-500 {
-            background: #f5b301 !important;
-            color: #1a1206 !important;
-            border-radius: 4px !important;
-            backdrop-filter: none !important;
-          }
-          span.bg-amber-500, div.bg-amber-500 {
-            background: #c2410c !important;
-            color: #fff !important;
-            backdrop-filter: none !important;
-          }
-        `}</style>
         {children}
       </body>
     </html>

@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { getJson, invalidate } from "@/lib/api/cache";
 import type { ProjectRow } from "@/lib/domain/types";
 
-const fieldClass =
-  "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none ring-amber-500 focus:border-amber-500 focus:ring-2";
+const fieldClass = "field text-sm";
 
 export function ProjectOffice() {
   const router = useRouter();
@@ -28,22 +28,25 @@ export function ProjectOffice() {
     status: "Open",
   });
 
-  async function reload() {
+  async function reload(force = false) {
     const [listRes, sessionRes] = await Promise.all([
-      fetch("/api/projects?all=1", { credentials: "include" }),
-      fetch("/api/auth/session", { credentials: "include" }),
+      getJson("/api/projects?all=1", force),
+      getJson("/api/auth/session", force),
     ]);
-    const list = (await listRes.json().catch(() => ({}))) as { message?: string; projects?: ProjectRow[] };
+    const list = (listRes.body || {}) as { message?: string; projects?: ProjectRow[] };
     if (!listRes.ok) throw new ApiError(list.message || "Không tải được công trình.", listRes.status);
-    const session = (await sessionRes.json().catch(() => ({}))) as { app_role?: string };
+    const session = (sessionRes.body || {}) as { app_role?: string };
     setProjects(list.projects || []);
     setAdmin(session.app_role === "admin");
   }
 
   useEffect(() => {
-    reload()
-      .catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được công trình."))
-      .finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload()
+        .catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được công trình."))
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function onCreate(event: FormEvent) {
@@ -59,6 +62,7 @@ export function ProjectOffice() {
       });
       const data = (await response.json().catch(() => ({}))) as { message?: string; code?: string };
       if (!response.ok || !data.code) throw new ApiError(data.message || "Không tạo được công trình.", response.status);
+      invalidate("/api/projects");
       router.push(`/manage/${encodeURIComponent(data.code)}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tạo được công trình.");
@@ -78,7 +82,7 @@ export function ProjectOffice() {
     <div className="space-y-6">
       {error ? <ErrorBanner message={error} /> : null}
       {admin ? (
-        <form onSubmit={onCreate} className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 md:grid-cols-4">
+        <form onSubmit={onCreate} className="glass-card grid gap-3 p-4 md:grid-cols-4">
           <input className={fieldClass} placeholder="Mã, ví dụ CT-02" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
           <input className={fieldClass} placeholder="Tên công trình" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           <input className={fieldClass} placeholder="Chủ đầu tư" value={form.customer} onChange={(e) => setForm({ ...form, customer: e.target.value })} />
@@ -96,7 +100,7 @@ export function ProjectOffice() {
             <option value="On Hold">Tạm dừng</option>
             <option value="Completed">Hoàn thành</option>
           </select>
-          <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-slate-900 text-sm font-semibold text-white disabled:opacity-60">
+          <button type="submit" disabled={saving} className="btn btn-primary text-sm disabled:opacity-60">
             {saving ? "Đang tạo…" : "Tạo công trình"}
           </button>
         </form>
@@ -104,9 +108,9 @@ export function ProjectOffice() {
         <p className="text-sm text-slate-600">Bạn xem được các công trình được phân công. Admin mới tạo và sửa danh mục.</p>
       )}
 
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="glass-card overflow-x-auto">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200/70 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">Mã</th>
               <th className="px-4 py-3">Công trình</th>
@@ -125,7 +129,7 @@ export function ProjectOffice() {
                 <td className="px-4 py-3">{project.status || "Open"}</td>
                 <td className="px-4 py-3 text-right">{Math.round(project.percent_complete || 0)}%</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/manage/${encodeURIComponent(project.name)}`} className="font-semibold text-amber-700">
+                  <Link href={`/manage/${encodeURIComponent(project.name)}`} className="font-semibold text-blue-700 hover:text-blue-800">
                     Mở sổ
                   </Link>
                 </td>

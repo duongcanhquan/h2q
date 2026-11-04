@@ -1,11 +1,9 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { OfficeLinks } from "@/components/manage/OfficeLinks";
 import { ControlBoard } from "@/components/manage/ControlBoard";
 
 export default function ControlPage() {
   return (
-    <AppShell title="Điều hành" wide>
-      <OfficeLinks />
+    <AppShell title="Điều hành" subtitle="Vai trò, đội thi công, thiết bị và nhân sự." wide>
       <ControlBoard />
     </AppShell>
   );

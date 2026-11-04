@@ -33,23 +33,45 @@ export function ArchiveBoard() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void getJson("/api/projects?all=1").then((entry) => {
-        const body = entry.body as { projects?: { name: string; project_name: string }[] };
-        const rows = body.projects || [];
-        setProjects(rows.map((row) => ({ code: row.name, name: row.project_name })));
-      });
+    let cancelled = false;
+    let idleId: number | null = null;
+    let fallbackId: number | null = null;
+
+    void getJson("/api/projects?all=1&lite=1").then((entry) => {
+      if (cancelled) return;
+      const body = entry.body as { projects?: { name: string; project_name: string }[] };
+      const rows = body.projects || [];
+      setProjects(rows.map((row) => ({ code: row.name, name: row.project_name })));
+    });
+
+    const loadExtras = () => {
+      if (cancelled) return;
       void getJson("/api/registers/control").then((entry) => {
+        if (cancelled) return;
         const body = entry.body as { workers?: Person[]; equipment?: Machine[] };
         setPeople(body.workers || []);
         setMachines(body.equipment || []);
       });
       void getJson("/api/registers/supply").then((entry) => {
+        if (cancelled) return;
         const body = entry.body as { prices?: Material[] };
         setMaterials(body.prices || []);
       });
-    }, 0);
-    return () => window.clearTimeout(timer);
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(loadExtras);
+    } else {
+      fallbackId = window.setTimeout(loadExtras, 500);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId != null && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+      if (fallbackId != null) window.clearTimeout(fallbackId);
+    };
   }, []);
 
   useEffect(() => {

@@ -35,7 +35,7 @@ const KINDS = [
   ["chuyen", "Chuyển kho"],
 ] as const;
 const money = (value: number) => new Intl.NumberFormat("vi-VN").format(Math.round(value || 0));
-const field = "rounded-xl border border-slate-200 px-3 py-2";
+const field = "field text-sm";
 
 export function StockBoard() {
   const [places, setPlaces] = useState<Place[]>([]);

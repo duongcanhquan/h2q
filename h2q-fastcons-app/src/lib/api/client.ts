@@ -1,6 +1,6 @@
 "use client";
 
-import { getJson, invalidate } from "@/lib/api/cache";
+import { getJson, invalidateAfterMutation } from "@/lib/api/cache";
 import { ApiError } from "@/lib/api/errors";
 import type {
   H2qPublicSettings,
@@ -49,7 +49,7 @@ async function apiSend<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   const data = (await response.json().catch(() => ({}))) as { message?: string };
-  if (response.ok) invalidate();
+  if (response.ok) invalidateAfterMutation(path);
   if (response.status === 401) {
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
       const url = new URL("/login", window.location.origin);

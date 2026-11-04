@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { getJson, invalidate } from "@/lib/api/cache";
 
 type Project = { id: string; code: string; name: string };
 type Party = { id: string; name: string; tax_code: string | null; phone: string | null };
@@ -19,7 +20,7 @@ type Row = {
   retention_amount: number;
   payable: number;
 };
-const field = "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm";
+const field = "field text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
 
 export function ContractBoard() {
@@ -32,14 +33,14 @@ export function ContractBoard() {
   const [party, setParty] = useState({ name: "", tax_code: "", phone: "" });
   const [order, setOrder] = useState({ project_code: "", subcontractor_id: "", code: "", title: "", retention_percent: "5", description: "", unit: "", qty: "", rate: "" });
 
-  async function reload() {
+  async function reload(force = false) {
     const [res, session] = await Promise.all([
-      fetch("/api/registers/contracts", { credentials: "include" }),
-      fetch("/api/auth/session", { credentials: "include" }),
+      getJson("/api/registers/contracts", force),
+      getJson("/api/auth/session", force),
     ]);
-    const data = (await res.json().catch(() => ({}))) as { message?: string; rows?: Row[]; parties?: Party[]; projects?: Project[] };
+    const data = (res.body || {}) as { message?: string; rows?: Row[]; parties?: Party[]; projects?: Project[] };
     if (!res.ok) throw new ApiError(data.message || "Không tải được giao thầu.", res.status);
-    const who = (await session.json().catch(() => ({}))) as { app_role?: string };
+    const who = (session.body || {}) as { app_role?: string };
     setRows(data.rows || []);
     setParties(data.parties || []);
     setProjects(data.projects || []);
@@ -47,7 +48,10 @@ export function ContractBoard() {
   }
 
   useEffect(() => {
-    reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được giao thầu.")).finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được giao thầu.")).finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function post(body: unknown) {
@@ -59,6 +63,7 @@ export function ContractBoard() {
     });
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) throw new ApiError(data.message || "Không lưu được.", res.status);
+    invalidate("/api/registers/contracts");
   }
 
   async function onParty(event: FormEvent) {
@@ -67,7 +72,7 @@ export function ContractBoard() {
     try {
       await post({ kind: "party", ...party });
       setParty({ name: "", tax_code: "", phone: "" });
-      await reload();
+      await reload(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không lưu được thầu phụ.");
     }
@@ -79,7 +84,7 @@ export function ContractBoard() {
     try {
       await post(order);
       setOrder({ ...order, code: "", title: "", description: "", qty: "", rate: "" });
-      await reload();
+      await reload(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không lưu được hợp đồng.");
     }

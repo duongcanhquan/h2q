@@ -7,20 +7,28 @@ import type { ProjectRow } from "@/lib/domain/types";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ApiError } from "@/lib/api/errors";
+import { peek } from "@/lib/api/cache";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { ProjectProgressRow } from "@/lib/supabase/database.types";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { ProjectGridSkeleton } from "@/components/projects/ProjectCardSkeleton";
 
+function cachedProjects(): ProjectRow[] {
+  const hit = peek("/api/projects");
+  if (!hit || hit.status < 200 || hit.status >= 300) return [];
+  const body = hit.body as { projects?: ProjectRow[] };
+  return body.projects || [];
+}
+
 export function ProjectGrid() {
-  const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [projects, setProjects] = useState<ProjectRow[]>(() => cachedProjects());
   const [progressById, setProgressById] = useState<Record<string, ProjectProgressRow>>({});
   const [realtimeOn, setRealtimeOn] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => cachedProjects().length === 0);
   const [error, setError] = useState("");
 
-  async function load() {
-    setLoading(true);
+  async function load(forceSpinner = false) {
+    if (forceSpinner || projects.length === 0) setLoading(true);
     setError("");
     try {
       const data = await getActiveProjects();
@@ -33,7 +41,10 @@ export function ProjectGrid() {
   }
 
   useEffect(() => {
-    void load();
+    const t = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -106,7 +117,7 @@ export function ProjectGrid() {
         </div>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void load(true)}
           disabled={loading}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-3 text-sm font-medium text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
         >

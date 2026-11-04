@@ -1,7 +1,7 @@
 "use client";
 
 import { Camera, ImagePlus, Trash2, UploadCloud } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uploadSitePhoto } from "@/lib/api/client";
 import { Spinner } from "@/components/ui/Spinner";
 import { ApiError } from "@/lib/api/errors";
@@ -31,8 +31,11 @@ export function PhotoCapture({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const valueRef = useRef(value);
-  valueRef.current = value;
   const [globalError, setGlobalError] = useState("");
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   async function handleFiles(fileList: FileList | null) {
     if (!fileList?.length) return;

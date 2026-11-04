@@ -22,7 +22,7 @@ type Control = {
 };
 type Project = { code: string; name: string };
 type Task = { id: string; code: string; subject: string; project_code: string };
-const field = "min-h-11 w-full rounded-xl border border-stone-300/80 bg-white/80 px-3 shadow-none";
+const field = "field text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
 
 export function SupplyBoard() {
@@ -61,7 +61,10 @@ export function SupplyBoard() {
   }
 
   useEffect(() => {
-    reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được vật tư."));
+    const t = window.setTimeout(() => {
+      reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được vật tư."));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function post(body: unknown) {

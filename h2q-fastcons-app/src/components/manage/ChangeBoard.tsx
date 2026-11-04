@@ -4,10 +4,11 @@ import { FormEvent, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api/errors";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { getJson, invalidate } from "@/lib/api/cache";
 
 type Project = { id: string; code: string; name: string };
 type Row = { id: string; code: string; title: string; reason: string | null; amount: number; status: string; project_code: string; project_name: string };
-const field = "min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm";
+const field = "field text-sm";
 const money = (n: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n || 0);
 const STATUS: Record<string, string> = { Draft: "Nháp", Submitted: "Đã trình", Approved: "Đã duyệt", Rejected: "Từ chối" };
 
@@ -19,21 +20,24 @@ export function ChangeBoard() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ project_code: "", code: "", title: "", reason: "", amount: "" });
 
-  async function reload() {
+  async function reload(force = false) {
     const [res, session] = await Promise.all([
-      fetch("/api/registers/changes", { credentials: "include" }),
-      fetch("/api/auth/session", { credentials: "include" }),
+      getJson("/api/registers/changes", force),
+      getJson("/api/auth/session", force),
     ]);
-    const data = (await res.json().catch(() => ({}))) as { message?: string; rows?: Row[]; projects?: Project[] };
+    const data = (res.body || {}) as { message?: string; rows?: Row[]; projects?: Project[] };
     if (!res.ok) throw new ApiError(data.message || "Không tải được phát sinh.", res.status);
-    const who = (await session.json().catch(() => ({}))) as { app_role?: string };
+    const who = (session.body || {}) as { app_role?: string };
     setRows(data.rows || []);
     setProjects(data.projects || []);
     setAdmin(who.app_role === "admin");
   }
 
   useEffect(() => {
-    reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được phát sinh.")).finally(() => setLoading(false));
+    const t = window.setTimeout(() => {
+      reload().catch((err: unknown) => setError(err instanceof ApiError ? err.message : "Không tải được phát sinh.")).finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function onCreate(event: FormEvent) {
@@ -48,7 +52,8 @@ export function ChangeBoard() {
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không tạo được phát sinh.");
     setForm({ ...form, code: "", title: "", reason: "", amount: "" });
-    await reload();
+    invalidate("/api/registers/changes");
+    await reload(true);
   }
 
   async function setStatus(id: string, status: string) {
@@ -61,7 +66,8 @@ export function ChangeBoard() {
     });
     const data = (await res.json().catch(() => ({}))) as { message?: string };
     if (!res.ok) return setError(data.message || "Không đổi được trạng thái.");
-    await reload();
+    invalidate("/api/registers/changes");
+    await reload(true);
   }
 
   if (loading) return <p className="flex items-center gap-2 text-sm text-slate-600"><Loader2 className="size-4 animate-spin" /> Đang tải phát sinh…</p>;

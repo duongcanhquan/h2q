@@ -7,32 +7,48 @@ import type { TaskRow } from "@/lib/domain/types";
 import { ApiError } from "@/lib/api/errors";
 import { drainLocalMeasurementQueue } from "@/lib/supabase/measurements";
 
+function applyWbs(
+  projectId: string,
+  data: { project_name?: string; tasks?: TaskRow[]; site_geofence?: { ring?: Array<[number, number]> } | null },
+  setters: {
+    setProjectName: (v: string) => void;
+    setTasks: (v: TaskRow[]) => void;
+    setGeofence: (v: Array<[number, number]> | null) => void;
+  },
+) {
+  setters.setProjectName(data.project_name || projectId);
+  setters.setTasks((data.tasks || []).filter((t) => !t.is_group));
+  setters.setGeofence(data.site_geofence?.ring?.length ? data.site_geofence.ring : null);
+}
+
 export function useProjectWbs(projectId: string) {
-  const [tasks, setTasks] = useState<TaskRow[]>([]);
-  const [projectName, setProjectName] = useState(projectId);
-  const [geofence, setGeofence] = useState<Array<[number, number]> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = typeof window !== "undefined" ? readCachedProjectWbs(projectId) : null;
+  const [tasks, setTasks] = useState<TaskRow[]>(() =>
+    cached ? (cached.tasks || []).filter((t) => !t.is_group) : [],
+  );
+  const [projectName, setProjectName] = useState(() => cached?.project_name || projectId);
+  const [geofence, setGeofence] = useState<Array<[number, number]> | null>(() =>
+    cached?.site_geofence?.ring?.length ? cached.site_geofence.ring : null,
+  );
+  const [loading, setLoading] = useState(!cached);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
 
   const reload = useCallback(async () => {
-    setLoading(true);
+    const hadCache = Boolean(readCachedProjectWbs(projectId));
+    if (!hadCache) setLoading(true);
     setError("");
     setOffline(false);
     try {
       const data = await getProjectWbs(projectId);
       cacheProjectWbs(projectId, data);
-      setProjectName(data.project_name || projectId);
-      setTasks((data.tasks || []).filter((t) => !t.is_group));
-      setGeofence(data.site_geofence?.ring?.length ? data.site_geofence.ring : null);
+      applyWbs(projectId, data, { setProjectName, setTasks, setGeofence });
       void drainLocalMeasurementQueue();
     } catch (err) {
-      const cached = readCachedProjectWbs(projectId);
-      if (cached) {
+      const fallback = readCachedProjectWbs(projectId);
+      if (fallback) {
         setOffline(true);
-        setProjectName(cached.project_name || projectId);
-        setTasks((cached.tasks || []).filter((t) => !t.is_group));
-        setGeofence(cached.site_geofence?.ring?.length ? cached.site_geofence.ring : null);
+        applyWbs(projectId, fallback, { setProjectName, setTasks, setGeofence });
       } else {
         setError(err instanceof ApiError || err instanceof Error ? err.message : "Không tải được hạng mục");
       }
@@ -42,7 +58,6 @@ export function useProjectWbs(projectId: string) {
   }, [projectId]);
 
   useEffect(() => {
-    // Defer so the effect itself does not synchronously setState (React Compiler lint).
     const t = window.setTimeout(() => {
       void reload();
     }, 0);

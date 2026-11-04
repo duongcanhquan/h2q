@@ -7,7 +7,7 @@ export default async function ManageProjectPage({ params }: Props) {
   const { code } = await params;
   const projectCode = decodeURIComponent(code);
   return (
-    <AppShell title={projectCode} backHref="/manage" wide>
+    <AppShell title="Sổ công trình" subtitle={projectCode} backHref="/manage" wide>
       <ProjectDesk code={projectCode} />
     </AppShell>
   );

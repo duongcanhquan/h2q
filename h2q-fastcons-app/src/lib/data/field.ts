@@ -75,10 +75,22 @@ export function mapSettings(row: AppSettingsRow | null): H2qPublicSettings {
   };
 }
 
+let settingsMemo: { at: number; value: H2qPublicSettings } | null = null;
+const SETTINGS_TTL_MS = 60_000;
+
 export async function loadSettings(supabase: Db) {
+  if (settingsMemo && Date.now() - settingsMemo.at < SETTINGS_TTL_MS) {
+    return settingsMemo.value;
+  }
   const { data, error } = await supabase.from("app_settings").select("*").eq("id", 1).maybeSingle();
   if (error) throw new Error(error.message);
-  return mapSettings(data);
+  const value = mapSettings(data);
+  settingsMemo = { at: Date.now(), value };
+  return value;
+}
+
+export function clearSettingsMemo() {
+  settingsMemo = null;
 }
 
 export function entryKindOf(value: unknown): "thuc_hien" | "nghiem_thu" {

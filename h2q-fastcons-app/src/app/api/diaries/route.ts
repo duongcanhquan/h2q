@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   );
   if (fence.action === "block") return jsonError(`${fence.message} Không gửi được.`, 400);
 
-  let taskId: string | null = line?.task || null;
+  const taskId: string | null = line?.task || null;
   if (taskId) {
     const taskRes = await supabase
       .from("tasks")
